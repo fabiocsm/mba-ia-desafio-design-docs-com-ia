@@ -41,11 +41,11 @@ Confirmar que o `docs/FDD.md` utiliza códigos `WEBHOOK_*` e que todos os caminh
 
 ```bash
 grep -E "WEBHOOK_[A-Z_]+" docs/FDD.md
-grep -oE "(src|prisma)/[a-zA-Z0-9_./-]+(\.ts|\.prisma)" docs/FDD.md docs/RFC.md docs/PRD.md docs/adrs/*.md | cut -d: -f2 | sort -u | grep -vE "^src/(worker\.ts|modules/webhooks/)" | while read -r path; do
-  if [ ! -f "$path" ]; then
-    echo "MISSING FILE: $path"
+grep -oE "(src|prisma)/[a-zA-Z0-9_./-]+(\.ts|\.prisma)" docs/FDD.md docs/RFC.md docs/PRD.md docs/adrs/*.md | cut -d: -f2 | sort -u | grep -vE "^src/(worker\.ts|modules/webhooks/)" | while read -r filepath; do
+  if [ ! -f "$filepath" ]; then
+    echo "MISSING FILE: $filepath"
   else
-    echo "OK: $path"
+    echo "OK: $filepath"
   fi
 done
 ```
