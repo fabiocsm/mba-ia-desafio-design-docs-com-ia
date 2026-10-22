@@ -23,7 +23,7 @@ Produzir o pacote completo, consistente e rastreável de documentação técnica
 **Project Type**: Technical Design Documentation Package (`PRD`, `RFC`, `FDD`, `ADRs`, `Traceability Tracker`, `Process README`) para um Web Service REST + Background Polling Worker
 
 **Performance Goals**:
-- Meta da solução especificada: latência de notificação percebida pelo cliente $< 10\text{s}$ via worker em polling de $2\text{s}$ (`[09:02] Marcos`, `[09:09] Diego`, `[09:10] Larissa`), timeout HTTP de $10\text{s}$ por disparo (`[09:42] Diego`) e janela de retry de ~15h em 5 tentativas (`1m, 5m, 30m, 2h, 12h`, `[09:17] Diego`).
+- Meta da solução especificada: latência de notificação percebida pelo cliente $< 10\text{s}$ via worker em polling de $2\text{s}$ (`[09:02] Marcos`, `[09:09] Diego`, `[09:10] Larissa`), timeout HTTP de $10\text{s}$ por disparo (`[09:42] Diego`) e janela de retry de ~15h em 5 retentativas após o envio inicial (`1m, 5m, 30m, 2h, 12h`, `[09:17] Diego`).
 - Meta de qualidade documental: $\ge 80\%$ dos itens rastreados em `docs/TRACKER.md` ($\ge 70\%$ `TRANSCRICAO`, $\ge 5$ `CODIGO`) e $100\%$ de caminhos de arquivo válidos.
 
 **Constraints**:
@@ -32,7 +32,7 @@ Produzir o pacote completo, consistente e rastreável de documentação técnica
 - Fronteira estrita de altura entre documentos (RFC conciso de 2–4 páginas sem repetir o detalhamento de implementação do FDD).
 - Filtragem obrigatória de ideias descartadas ou adiadas na reunião (não podem entrar como requisitos ativos).
 
-**Scale/Scope**: 11 arquivos Markdown finais a produzir/atualizar (`6` ADRs em `docs/adrs/`, `docs/RFC.md`, `docs/FDD.md`, `docs/PRD.md`, `docs/TRACKER.md` e `README.md`), cobrindo 6 decisões arquiteturais, 7 contratos de endpoints HTTP + 1 contrato de payload outbound, 10 códigos de erro `WEBHOOK_*`, 12 requisitos funcionais, 8 requisitos não funcionais e $>60$ entradas rastreadas no Tracker.
+**Scale/Scope**: 11 arquivos Markdown finais a produzir/atualizar (`6` ADRs em `docs/adrs/`, `docs/RFC.md`, `docs/FDD.md`, `docs/PRD.md`, `docs/TRACKER.md` e `README.md`), cobrindo 6 decisões arquiteturais, 7 contratos de endpoints HTTP + 1 contrato de payload outbound, 11 códigos de erro `WEBHOOK_*`, 12 requisitos funcionais, 8 requisitos não funcionais e 161 IDs explícitos rastreados no Tracker.
 
 ## Constitution Check
 
@@ -41,7 +41,7 @@ Produzir o pacote completo, consistente e rastreável de documentação técnica
 | Princípio da Constituição | Status Pré-Phase 0 | Status Pós-Phase 1 | Evidência de Conformidade no Plano |
 | :--- | :--- | :--- | :--- |
 | **I. Rastreabilidade Estrita e Anti-Alucinação (NON-NEGOTIABLE)** | PASS | PASS | Todos os requisitos, decisões, alternativas e contratos em [research.md](./research.md), [data-model.md](./data-model.md) e [contracts/](./contracts/) estão vinculados a timestamps `[hh:mm] Nome` de `TRANSCRICAO.md` ou a arquivos reais de `src/` e `prisma/`. |
-| **II. Imutabilidade do Código e da Transcrição (NON-NEGOTIABLE)** | PASS | PASS | O plano restringe todas as operações de escrita aos arquivos `docs/**`, `README.md` e `specs/001-webhook-design-docs/**`. Incluído comando de auditoria `git status` em [quickstart.md](./quickstart.md). |
+| **II. Imutabilidade do Código e da Transcrição (NON-NEGOTIABLE)** | PASS | PASS | O plano restringe todas as operações de escrita aos arquivos `docs/**`, `README.md` e `specs/001-webhook-design-docs/**`. Incluída auditoria por comparação com a base conhecida, incluindo alterações commitadas e arquivos novos em [quickstart.md](./quickstart.md). |
 | **III. Separação de Alturas e Fronteiras Documentais** | PASS | PASS | Definido em [deliverables-contract.md](./contracts/deliverables-contract.md) o recorte exato de cada documento: ADRs (decisão isolada), RFC (proposta arquitetural concisa de 2–4 páginas), FDD (implementação profunda), PRD (produto/negócio) e Tracker (rastreabilidade). |
 | **IV. Filtragem Rigorosa de Escopo e Exclusões Explícitas** | PASS | PASS | Mapeadas em [research.md](./research.md) todas as exclusões (inbound webhooks, e-mail em falhas, dashboard visual, arquivamento >30 dias), alternativas descartadas (HTTP síncrono, Redis Streams, triggers MySQL, 3 retries/indefinido, secret global, *exactly-once*) e questões em aberto (rate limiting, multi-worker, endurecimento RBAC). |
 | **V. Aderência Arquitetural e Acionabilidade no Código Base** | PASS | PASS | Mapeados 12 arquivos reais do código base em [research.md](./research.md) (`prisma/schema.prisma`, `src/modules/orders/order.service.ts`, `src/modules/orders/order.status.ts`, `src/shared/errors/app-error.ts`, `src/shared/errors/http-errors.ts`, `src/middlewares/error.middleware.ts`, `src/middlewares/auth.middleware.ts`, `src/middlewares/validate.middleware.ts`, `src/shared/logger/index.ts`, `src/routes/index.ts`, `src/app.ts`, `src/server.ts`). |
@@ -94,7 +94,7 @@ specs/001-webhook-design-docs/
 │   ├── middlewares/
 │   │   ├── auth.middleware.ts               # authenticate e requireRole('ADMIN')
 │   │   ├── error.middleware.ts              # Tratamento centralizado de AppError, ZodError e Prisma
-│   │   ├── request-logger.middleware.ts     # Logging HTTP via pino-http
+│   │   ├── request-logger.middleware.ts     # Logging HTTP próprio via logger Pino
 │   │   └── validate.middleware.ts           # Validação de body, query e params com Zod
 │   ├── modules/
 │   │   └── orders/
@@ -123,4 +123,6 @@ specs/001-webhook-design-docs/
 
 ## Complexity Tracking
 
-Nenhuma violação à Constituição foi identificada. Todos os 5 princípios fundamentais e critérios de aceite foram integralmente atendidos no desenho.
+A revisão posterior corrigiu inconsistências não detectadas pelos gates iniciais. As verificações e seus limites estão em [review.md](./review.md); detalhes derivados estão explicitamente submetidos à revisão em RFC-REVIEW-01. Os rótulos PASS acima registram a avaliação do plano e não substituem a auditoria final.
+
+**Sincronização após revisão**: o FDD é a fonte canônica dos fluxos, schema e contratos. O Tracker possui 161 IDs explícitos (134 TRANSCRICAO e 27 CODIGO); a existência da referência é validada automaticamente e seu conteúdo passa por revisão semântica.

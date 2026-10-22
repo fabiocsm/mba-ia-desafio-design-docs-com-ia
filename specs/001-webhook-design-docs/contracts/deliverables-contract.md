@@ -12,8 +12,8 @@ Este contrato define a interface documental exata que os 6 grupos de artefatos d
 - **Quantidade**: 6 arquivos (dentro da faixa obrigatória de 5 a 8 arquivos).
 - **Lista de Arquivos Planejados**:
   1. `docs/adrs/ADR-001-outbox-no-mysql.md` — Padrão Transactional Outbox no MySQL com snapshot JSON na inserção e ID UUID.
-  2. `docs/adrs/ADR-002-worker-separado-em-polling.md` — Worker em processo Node.js separado (`src/worker.ts`) com polling a cada 2 segundos e ordering implícita por `order_id`.
-  3. `docs/adrs/ADR-003-politica-de-retry-backoff-e-dlq.md` — Política de retry com backoff exponencial (5 tentativas: 1m, 5m, 30m, 2h, 12h), tabela `webhook_dead_letter` separada e replay manual por `ADMIN`.
+  2. `docs/adrs/ADR-002-worker-separado-em-polling.md` — Worker em processo Node.js separado (`src/worker.ts`) com polling a cada 2 segundos e ordenação por pedido com as condições de predecessor do FDD.
+  3. `docs/adrs/ADR-003-politica-de-retry-backoff-e-dlq.md` — Política de retry com backoff exponencial (5 retentativas após o envio inicial: 1m, 5m, 30m, 2h, 12h), tabela `webhook_dead_letter` separada e replay manual por `ADMIN`.
   4. `docs/adrs/ADR-004-autenticacao-hmac-sha256-e-rotacao-de-secret.md` — Assinatura HMAC-SHA256 sobre o payload com secret única por endpoint, rotação com grace period de 24h e exigência de HTTPS.
   5. `docs/adrs/ADR-005-entrega-at-least-once-com-x-event-id.md` — Semântica de entrega *at-least-once* com deduplicação no cliente via cabeçalho `X-Event-Id` (UUID).
   6. `docs/adrs/ADR-006-reuso-dos-padroes-existentes-do-oms.md` — Reuso integral da arquitetura modular (`src/modules/webhooks/`), função pura `publishWebhookEvent(tx, ...)` em `src/modules/orders/order.service.ts`, `AppError` (`WEBHOOK_*`), `errorMiddleware`, `requireRole` e logger `Pino`.
@@ -102,3 +102,7 @@ Este contrato define a interface documental exata que os 6 grupos de artefatos d
   4. `## Prompts Customizados` (mínimo de 2 prompts relevantes em blocos de código)
   5. `## Iterações e Ajustes` (mínimo de 2 momentos concretos de correção/refinamento e número de iterações realizadas)
   6. `## Como Navegar a Entrega` (árvore/caminhos dos arquivos entregues e ordem sugerida de leitura)
+
+## Atualização da Revisão
+
+O contrato de aceite continua sendo o enunciado preservado. A implementação proposta usa envio inicial + cinco retentativas (até seis resultados HTTP persistidos por ciclo), 11 códigos de erro de domínio e recuperação/ordenação descritas no FDD. O inventário atual tem 161 IDs explícitos; sua contagem não substitui a revisão semântica nem significa que cada detalhe técnico foi decidido na reunião. Ver [review.md](../review.md).

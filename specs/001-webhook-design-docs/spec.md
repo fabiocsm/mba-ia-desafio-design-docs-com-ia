@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-21
 
-**Status**: Draft
+**Status**: Especificação documental revisada; propostas derivadas de implementação no RFC/FDD
 
 **Input**: User description: "Analise o README.md e verifique quantas specs seria adequado dividir o trabalho a ser feito e crie a especificação para cada uma delas de acordo com o README.md ."
 
@@ -124,7 +124,7 @@ Os avaliadores do desafio precisam ler no `README.md` principal do repositório 
 - **FR-010**: O arquivo `docs/PRD.md` DEVE identificar no mínimo 8 requisitos funcionais discutidos na reunião, incluir pelo menos 1 objetivo com métrica e meta quantitativa, listar pelo menos 2 itens descartados/adiados na seção "Fora de escopo" e detalhar pelo menos 2 riscos com probabilidade, impacto e mitigação.
 - **FR-011**: O arquivo `docs/TRACKER.md` DEVE seguir o formato de tabela `| ID | Documento | Tipo | Conteúdo (resumo) | Fonte | Localização |`, mapeando pelo menos 80% dos itens identificáveis nos documentos, com no mínimo 70% das linhas tendo `Fonte = TRANSCRICAO` (com timestamp válido `[hh:mm] Nome`) e no mínimo 5 linhas tendo `Fonte = CODIGO` (com caminho de arquivo real).
 - **FR-012**: O arquivo `README.md` na raiz do repositório DEVE ser atualizado ao final do processo contendo as seções obrigatórias (Sobre o desafio, Ferramentas de IA utilizadas com $\ge 1$ ferramenta, Workflow adotado, Prompts customizados com $\ge 2$ prompts em blocos de código, Iterações e ajustes com $\ge 2$ ajustes concretos, e Como navegar a entrega).
-- **FR-013**: Toda informação registrada nos documentos DEVE ser fiel e não contradizer `TRANSCRICAO.md` nem o código-fonte existente, e 100% dos caminhos de arquivo citados nos documentos DEVEM existir no repositório.
+- **FR-013**: Toda informação registrada nos documentos DEVE ser fiel e não contradizer `TRANSCRICAO.md` nem o código-fonte existente, e 100% dos caminhos apresentados como código existente DEVEM existir no repositório. Arquivos futuros devem estar identificados como propostas e não podem ser usados como Fonte CODIGO.
 - **FR-014**: Nenhum arquivo de código da aplicação (`src/`, `prisma/`, `tests/`, configurações) nem o arquivo `TRANSCRICAO.md` DEVE ser modificado durante todo o projeto.
 
 ### Key Entities
@@ -145,7 +145,7 @@ Os avaliadores do desafio precisam ler no `README.md` principal do repositório 
 - **SC-005**: O `docs/FDD.md` especifica pelo menos 4 contratos públicos HTTP com exemplos completos de entrada/saída e status, utiliza códigos de erro iniciados por `WEBHOOK_`, aborda métricas, logs e tracing em observabilidade e referencia no mínimo 4 caminhos de arquivo reais na seção "Integração com o sistema existente".
 - **SC-006**: O `docs/TRACKER.md` cobre no mínimo 80% dos itens identificáveis do pacote documental, atingindo pelo menos 70% de linhas com fonte `TRANSCRICAO` (`[hh:mm] Nome` válidos) e pelo menos 5 linhas com fonte `CODIGO` (caminhos de arquivo reais).
 - **SC-007**: O `README.md` documenta pelo menos 1 ferramenta de IA, pelo menos 2 prompts customizados em blocos de código e pelo menos 2 iterações ou ajustes concretos realizados na revisão crítica.
-- **SC-008**: 0% de arquivos inexistentes são citados nos documentos, 0 contradições existem em relação à transcrição ou ao código base e 0 alterações ocorrem nos diretórios `src/`, `prisma/`, `tests/`, configurações ou em `TRANSCRICAO.md`.
+- **SC-008**: 0% de referências apresentadas como código existente apontam para arquivos inexistentes, 0 contradições existem em relação à transcrição ou ao código base e 0 alterações ocorrem nos diretórios `src/`, `prisma/`, `tests/`, configurações ou em `TRANSCRICAO.md`.
 
 ## Assumptions
 

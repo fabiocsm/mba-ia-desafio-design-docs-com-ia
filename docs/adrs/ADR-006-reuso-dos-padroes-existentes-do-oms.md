@@ -33,7 +33,7 @@ Determinamos o **reuso integral dos padrões, middlewares e utilitários existen
 2. **Desacoplamento Transacional via Função Pura `publishWebhookEvent` (`[09:40] Bruno`, `[09:41] Bruno`, `[09:41] Diego`)**: Em vez de injetar `WebhookRepository` ou `WebhookService` no construtor de `OrderService`, o módulo de webhooks exportará uma função pura `publishWebhookEvent(tx, order, fromStatus, toStatus)` que recebe o `Prisma.TransactionClient` (`tx`) ativo em `OrderService.changeStatus` (`src/modules/orders/order.service.ts`).
 3. **Erros de Domínio Herdando de `AppError` com Prefixo `WEBHOOK_` (`[09:28] Bruno`, `[09:29] Larissa`, `[09:29] Bruno`)**: Todos os erros do módulo herdarão de `AppError` / subclasses de `src/shared/errors/http-errors.ts` utilizando códigos padronizados com prefixo `WEBHOOK_` (ex.: `WEBHOOK_NOT_FOUND`, `WEBHOOK_INVALID_URL`, `WEBHOOK_SECRET_REQUIRED`, `WEBHOOK_PAYLOAD_TOO_LARGE`, `WEBHOOK_DEAD_LETTER_NOT_FOUND`), sendo capturados sem qualquer alteração por `src/middlewares/error.middleware.ts`.
 4. **Reuso de `validate`, `authenticate`, `requireRole('ADMIN')`, `paginated` e `logger` (`[09:23] Sofia`, `[09:29] Bruno`, `[09:30] Larissa`, `[09:36] Larissa`)**:
-   - Schemas Zod validados via `src/middlewares/validate.middleware.ts` (reaproveitando o enum `OrderStatus` de `src/modules/orders/order.status.ts` / `@prisma/client`);
+   - Schemas Zod validados pelo adaptador local descrito no FDD, reutilizando `src/middlewares/validate.middleware.ts` (importando `OrderStatus` de `@prisma/client`, definido em `prisma/schema.prisma`; `src/modules/orders/order.status.ts` contém as funções de transição e não exporta o enum);
    - Proteção de rotas CRUD com `authenticate` e proteção de `POST /api/v1/admin/webhooks/dead-letter/:id/replay` com `requireRole('ADMIN')` (`src/middlewares/auth.middleware.ts`);
    - Logging estruturado na API e no `src/worker.ts` usando `src/shared/logger/index.ts` (Pino).
 
@@ -63,3 +63,5 @@ Determinamos o **reuso integral dos padrões, middlewares e utilitários existen
 
 ### Trade-off Explícito (`ADR-006-TRD-01`)
 Trocamos a **autonomia de um microsserviço independente de notificações** pela **coesão arquitetural e velocidade de entrega de um módulo interno (`src/modules/webhooks/`) integrado via função pura transacional (`publishWebhookEvent`)**, aceitando compartilhar o mesmo schema Prisma e codebase em troca de zero duplicação de infraestrutura, autenticação, validação e tratamento de erros (`[09:27] Bruno`, `[09:30] Larissa`, `[09:41] Diego`).
+
+**Compatibilidade verificada no código**: `ValidationError` fixa `VALIDATION_ERROR` e `NotFoundError` fixa `NOT_FOUND`. A proposta `FDD-DET-06` usa `AppError`/construtores parametrizáveis para códigos de domínio `WEBHOOK_*` e um adaptador local de `validate`; erros estruturais, de autenticação e de autorização mantêm os códigos genéricos existentes. Nenhum middleware compartilhado precisa mudar.

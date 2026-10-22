@@ -31,7 +31,7 @@ Implementaremos o processador de webhooks como um **processo Node.js independent
 1. **Entrypoint Dedicado (`[09:11] Larissa`, `[09:28] Bruno`)**: Será criado um novo ponto de entrada `src/worker.ts` (acionado via script `"worker"` no `package.json`, seguindo a estrutura de `src/server.ts`), delegando a lógica de processamento para `src/modules/webhooks/webhook.worker.ts` (ou `webhook.processor.ts`).
 2. **Instância Própria de `PrismaClient` (`[09:11] Bruno`, `[09:29] Diego`, `[09:30] Bruno`)**: Por executar em um processo sistema operacional separado da API HTTP, o worker instanciará seu próprio `PrismaClient` (reutilizando a factory `createPrismaClient()` de `src/config/database.ts`) conectado ao mesmo banco MySQL (`DATABASE_URL`).
 3. **Polling a Cada 2 Segundos em Pequenos Batches (`[09:08] Diego`, `[09:09] Diego`, `[09:10] Larissa`)**: O worker executará um loop com intervalo de 2 segundos consultando na tabela `webhook_outbox` os eventos mais antigos elegíveis (`status = 'PENDING'` e `next_attempt_at <= NOW()`), apoiado por índice composto em `(status, next_attempt_at, created_at)`.
-4. **Single-Worker com Ordenação Implícita por `order_id` (`[09:12] Diego`, `[09:13] Larissa`)**: Na primeira versão, rodaremos uma única instância do worker (*single-worker*). Como a leitura ordena por `created_at ASC`, a ordenação cronológica dos eventos por `order_id` é garantida implicitamente sem necessidade de mecanismos complexos de particionamento ou lock distribuído.
+4. **Single-Worker com Ordenação por `order_id` (`[09:12] Diego`, `[09:13] Larissa`)**: Na primeira versão, rodaremos uma única instância do worker (*single-worker*). A reunião descreveu a ordem por `created_at ASC`. A revisão identificou que isso não basta durante retries nem em timestamps empatados: o FDD propõe sequência de desempate e bloqueio por predecessor em `(webhookId, orderId)`, inclusive em DLQ (`FDD-DET-04`). Essa regra operacional é proposta derivada da garantia de ordem, não uma decisão adicional tomada na call.
 
 ---
 
@@ -54,13 +54,14 @@ Implementaremos o processador de webhooks como um **processo Node.js independent
 ## Consequências
 
 ### Positivas
-- **Atendimento Folgado ao SLA de Negócio**: O intervalo de polling de 2 segundos garante latência mínima de detecção $\le 2\text{s}$ no pior caso, muito abaixo do teto de 10 segundos acordado com os clientes B2B (`[09:02] Marcos`, `[09:09] Diego`, `[09:10] Larissa`).
+- **Meta de Latência de Negócio**: Sem backlog e com capacidade livre, o polling acrescenta até aproximadamente 2s de espera para detecção. O tempo de rede e a fila também compõem a meta de menos de 10s; o intervalo de polling isolado não garante seu cumprimento (`[09:02] Marcos`, `[09:09] Diego`, `[09:10] Larissa`).
 - **Isolamento Operacional**: Reinicializações ou picos de tráfego na API (`src/server.ts`) não afetam o worker (`src/worker.ts`) e vice-versa (`[09:11] Diego`).
-- **Ordenação Simples e Determinística**: Em modo *single-worker*, processar por `created_at ASC` preserva naturalmente a sequência de transições de um mesmo pedido (`PAID` $\rightarrow$ `PROCESSING` $\rightarrow$ `SHIPPED`) (`[09:12] Diego`).
+- **Ordenação Simples e Determinística**: Em modo *single-worker*, a proposta de seleção com predecessor e sequência no FDD preserva a ordem de processamento para um mesmo destino/pedido (`PAID` $\rightarrow$ `PROCESSING` $\rightarrow$ `SHIPPED`) (`[09:12] Diego`).
 
 ### Negativas
 - **Limitação Conhecida de Escala Horizontal (`[09:12] Diego`, `[09:13] Larissa`)**: Enquanto não houver particionamento por `order_id` ou lock pessimista coordenado, não é possível escalar horizontalmente para múltiplos workers em paralelo sem perder a garantia de ordem para transições rápidas de um mesmo pedido.
+- **Bloqueio por Predecessor (proposta derivada)**: Um evento em retry ou DLQ impede sucessores do mesmo destino/pedido até a recuperação; esses sucessores podem exceder a meta de 10s. A recuperação de `PROCESSING` após reinício também é proposta no FDD para preservar entregas.
 - **Consumo Adicional de Conexões no MySQL**: O processo separado do worker abre uma segunda instância de `PrismaClient` (`[09:30] Bruno`), consumindo seu próprio pool de conexões no banco de dados.
 
 ### Trade-off Explícito (`ADR-002-TRD-01`)
-Trocamos a **notificação instantânea sub-milissegundo e o paralelismo multi-worker imediato** pela **simplicidade, previsibilidade operacional e garantia implícita de ordem por `order_id` de um worker único em polling de 2 segundos**, aceitando uma latência base de até 2 segundos e postergando o particionamento multi-worker para quando o volume justificar (`[09:09] Diego`, `[09:10] Larissa`, `[09:13] Diego`).
+Trocamos a **notificação instantânea sub-milissegundo e o paralelismo multi-worker imediato** pela **simplicidade, previsibilidade operacional e ordem por pedido, com as condições operacionais detalhadas no FDD de um worker único em polling de 2 segundos**, aceitando uma latência base de até 2 segundos e postergando o particionamento multi-worker para quando o volume justificar (`[09:09] Diego`, `[09:10] Larissa`, `[09:13] Diego`).

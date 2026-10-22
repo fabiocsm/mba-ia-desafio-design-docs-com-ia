@@ -21,7 +21,7 @@ A solução oferece API completa para gerenciamento de endpoints de webhook, sel
 Na semana anterior à reunião técnica, três clientes B2B estratégicos — **Atlas Comercial**, **MaxDistribuição** e **Nova Cargo** — formalizaram a necessidade de receber notificações ativas de mudança de status de pedidos (`[09:00] Marcos`):
 
 1. **Ineficiência e Custo de Integração por Polling**: Atualmente, os sistemas desses clientes precisam consultar repetidamente o endpoint `GET /api/v1/orders` de tempos em tempos para descobrir se houve atualização de status, tornando a integração lenta, ineficiente e custosa para os clientes e gerando carga desnecessária na API do OMS (`[09:00] Marcos`, `[09:02] Marcos`).
-2. **Risco Iminente de Churn (Retenção de Receita B2B)**: A **Atlas Comercial** sinalizou explicitamente que, caso a funcionalidade não seja entregue até o final do trimestre (novembro), poderá migrar sua operação para um concorrente (`[09:00] Marcos`, `[09:45] Marcos`).
+2. **Risco Iminente de Churn (Retenção de Receita B2B)**: A **Atlas Comercial** sinalizou explicitamente que, caso a funcionalidade não seja entregue até o final do trimestre; o prazo solicitado para a feature é o fim de novembro, poderá migrar sua operação para um concorrente (`[09:00] Marcos`, `[09:45] Marcos`).
 3. **Necessidade de Confiabilidade sem Intervenção Manual**: Os clientes precisam que as atualizações não fiquem pendentes de atualização manual e sejam entregues mesmo diante de oscilações ou janelas de manutenção planejada em seus servidores (`[09:02] Marcos`, `[09:16] Diego`).
 
 ---
@@ -43,9 +43,9 @@ Na semana anterior à reunião técnica, três clientes B2B estratégicos — **
 
 | ID | Objetivo de Produto / Negócio | Métrica Indicadora | Meta Quantitativa | Origem |
 | :--- | :--- | :--- | :--- | :--- |
-| `PRD-OBJ-01` | **Notificação em Tempo Quase Real** | Latência entre o commit da mudança de status em `OrderService.changeStatus` e o disparo HTTP pelo worker em condições normais | **$< 10\text{ segundos}$** (operando com polling de **$2\text{ segundos}$** no worker) | `[09:02] Marcos`, `[09:09] Diego`, `[09:10] Larissa` |
+| `PRD-OBJ-01` | **Notificação em Tempo Quase Real** | Latência percebida após mudança de status, aproximada conservadoramente pelo tempo entre timestamp do evento e confirmação HTTP 2xx; inclui fila e rede em condições normais | **$< 10\text{ segundos}$** (operando com polling de **$2\text{ segundos}$** no worker) | `[09:02] Marcos`, `[09:09] Diego`, `[09:10] Larissa` |
 | `PRD-OBJ-02` | **Retenção dos Clientes B2B e Cumprimento de Prazo Comercial** | Entrega em produção homologada com revisão de segurança para atender Atlas Comercial, MaxDistribuição e Nova Cargo | **Até 3 Sprints** (entrega até o **fim de novembro**, incluindo **2 dias úteis** de revisão de segurança) | `[09:00] Marcos`, `[09:45] Marcos`, `[09:46] Larissa`, `[09:46] Sofia` |
-| `PRD-OBJ-03` | **Alta Resiliência a Manutenções de Clientes** | Janela temporal de recuperação automática de falhas antes de mover para a DLQ | **5 tentativas** cobrindo **~15 horas** (`1m, 5m, 30m, 2h, 12h`), superando janelas históricas de manutenção de 2h | `[09:16] Diego`, `[09:17] Diego`, `[09:17] Larissa` |
+| `PRD-OBJ-03` | **Alta Resiliência a Manutenções de Clientes** | Janela temporal de recuperação automática de falhas antes de mover para a DLQ | **Envio inicial + 5 retentativas (até 6 chamadas por ciclo)** cobrindo **~15 horas** (`1m, 5m, 30m, 2h, 12h`), superando janelas históricas de manutenção de 2h | `[09:16] Diego`, `[09:17] Diego`, `[09:17] Larissa` |
 
 ---
 
@@ -74,7 +74,7 @@ Os itens abaixo foram explicitamente discutidos na reunião e **excluídos desta
 
 ## 6. Requisitos Funcionais
 
-Todos os requisitos funcionais abaixo refletem diretamente as definições fechadas na reunião técnica:
+Os requisitos abaixo têm fundamento na reunião. Rotas detalhadas, códigos e regras operacionais são propostas derivadas no FDD; a interpretação de envio inicial + cinco retentativas está explicitada em `FDD-DET-01` para revisão.
 
 | ID | Requisito Funcional | Descrição e Regras de Negócio | Origem na Transcrição |
 | :--- | :--- | :--- | :--- |
@@ -86,8 +86,8 @@ Todos os requisitos funcionais abaixo refletem diretamente as definições fecha
 | `PRD-FR-06` | **Disparo Assíncrono com Cabeçalhos de Segurança e Rastreio** | Enviar requisição `POST` ao endpoint do cliente contendo obrigatoriamente os cabeçalhos `X-Event-Id`, `X-Signature` (`HMAC-SHA256`), `X-Timestamp`, `X-Webhook-Id` e `Content-Type: application/json`. | `[09:20] Sofia`, `[09:25] Diego`, `[09:44] Diego`, `[09:44] Sofia` |
 | `PRD-FR-07` | **Rotação de Secret com Grace Period de 24 Horas** | Disponibilizar endpoint (`POST /api/v1/webhooks/:id/rotate-secret`) para gerar nova `secret`, mantendo a `secret` anterior válida em paralelo por 24 horas antes de expirar. | `[09:21] Sofia`, `[09:22] Sofia` |
 | `PRD-FR-08` | **Histórico dos Últimos 100 Disparos (`Deliveries`)** | Disponibilizar `GET /api/v1/webhooks/:id/deliveries` retornando os últimos 100 disparos realizados para o endpoint, incluindo indicador de sucesso/falha, payload enviado, resposta recebida e tempo de resposta. | `[09:34] Marcos`, `[09:35] Larissa` |
-| `PRD-FR-09` | **Retentativa Automática com Backoff Exponencial (5 Tentativas)** | Reagendar automaticamente entregas que falharem (erro HTTP, erro de rede ou timeout $> 10\text{s}$) por até 5 tentativas seguindo a progressão `1m, 5m, 30m, 2h, 12h`. | `[09:15] Diego`, `[09:17] Diego`, `[09:17] Larissa` |
-| `PRD-FR-10` | **Persistência de Falhas Permanentes em Dead-Letter Queue (DLQ)** | Mover eventos que falharem após a 5ª tentativa para uma tabela dedicada `webhook_dead_letter`, registrando payload, motivo da falha e timestamp. | `[09:15] Diego`, `[09:18] Diego` |
+| `PRD-FR-09` | **Retentativa Automática com Backoff Exponencial (5 Retentativas após o Envio Inicial)** | Reagendar automaticamente entregas que falharem (erro HTTP, erro de rede ou timeout $> 10\text{s}$) com envio inicial + até 5 retentativas seguindo a progressão `1m, 5m, 30m, 2h, 12h`. | `[09:15] Diego`, `[09:17] Diego`, `[09:17] Larissa` |
+| `PRD-FR-10` | **Persistência de Falhas Permanentes em Dead-Letter Queue (DLQ)** | Mover eventos que esgotarem o envio inicial e as cinco retentativas para uma tabela dedicada `webhook_dead_letter`, registrando payload, motivo da falha e timestamp. | `[09:15] Diego`, `[09:18] Diego` |
 | `PRD-FR-11` | **Replay Manual da DLQ Exclusivo para `ADMIN` com Auditoria** | Disponibilizar `POST /api/v1/admin/webhooks/dead-letter/:id/replay` restrito à role `ADMIN` (via `requireRole('ADMIN')`), reenfileirando o evento na `webhook_outbox` como `PENDING` e registrando em log quem executou o replay. | `[09:18] Diego`, `[09:35] Diego`, `[09:36] Sofia`, `[09:36] Larissa` |
 | `PRD-FR-12` | **Controle de Acesso nas Rotas de Configuração** | Permitir que qualquer usuário autenticado com JWT válido (`OPERATOR` ou `ADMIN`) acesse os endpoints CRUD de configuração e histórico de webhooks na v1, recebendo `customerId` explicitamente na requisição. | `[09:32] Marcos`, `[09:32] Larissa`, `[09:36] Marcos`, `[09:37] Sofia` |
 
@@ -97,13 +97,13 @@ Todos os requisitos funcionais abaixo refletem diretamente as definições fecha
 
 | ID | Requisito Não Funcional | Especificação e Limite Técnico | Origem na Transcrição |
 | :--- | :--- | :--- | :--- |
-| `PRD-NFR-01` | **Latência de Notificação e Intervalo de Polling** | Latência percebida pelo cliente inferior a **10 segundos**, sustentada por polling do worker a cada **2 segundos** (latência mínima de fila de 2s no pior caso). | `[09:02] Marcos`, `[09:09] Diego`, `[09:10] Larissa` |
+| `PRD-NFR-01` | **Latência de Notificação e Intervalo de Polling** | Latência percebida pelo cliente inferior a **10 segundos**, sustentada por polling do worker a cada **2 segundos** (até aproximadamente 2s de espera de polling sem backlog; fila e rede também contam). | `[09:02] Marcos`, `[09:09] Diego`, `[09:10] Larissa` |
 | `PRD-NFR-02` | **Timeout de Chamada HTTP do Worker** | Timeout máximo de **10 segundos** (`10.000 ms`) por tentativa de envio HTTP ao servidor do cliente; respostas mais lentas são abortadas e tratadas como falha para retry. | `[09:42] Sofia`, `[09:42] Diego` |
 | `PRD-NFR-03` | **Limite Máximo de Tamanho de Payload** | Teto estrito de **64KB** por payload de evento; caso ultrapasse 64KB, o sistema deve falhar com erro explícito (`WEBHOOK_PAYLOAD_TOO_LARGE`) e nunca truncar o conteúdo. | `[09:23] Sofia`, `[09:24] Diego`, `[09:24] Larissa` |
 | `PRD-NFR-04` | **Obrigatoriedade de TLS (`HTTPS`)** | Rejeitar no schema Zod qualquer cadastro ou atualização de webhook cuja URL não utilize protocolo `https://`. | `[09:23] Sofia` |
 | `PRD-NFR-05` | **Autenticidade Criptográfica e Isolamento de Secret** | Assinatura `HMAC-SHA256` sobre o corpo do request usando `secret` única por endpoint (nunca global da plataforma). | `[09:20] Sofia`, `[09:21] Sofia`, `[09:22] Sofia` |
 | `PRD-NFR-06` | **Garantia de Entrega e Idempotência** | Semântica *at-least-once* com identificador `UUID` único por evento enviado em `X-Event-Id` para deduplicação no cliente receptor. | `[09:24] Diego`, `[09:25] Diego`, `[09:26] Larissa` |
-| `PRD-NFR-07` | **Ordenação de Eventos por Pedido** | Ordenação implícita por `order_id` (via leitura `created_at ASC` na `webhook_outbox`) garantida enquanto o sistema operar com instância única de worker (*single-worker*). | `[09:12] Diego`, `[09:13] Larissa`, `[09:14] Marcos` |
+| `PRD-NFR-07` | **Ordenação de Eventos por Pedido** | Ordenação por pedido em cada endpoint enquanto operar em single-worker. A proposta do FDD usa sequência e bloqueio por predecessor: retry e DLQ impedem ultrapassagem; não há ordenação global nem meta de 10s para sucessores bloqueados. | `[09:12] Diego`, `[09:13] Larissa`, `[09:14] Marcos` |
 | `PRD-NFR-08` | **Isolamento de Processo e Padronização Arquitetural** | O worker deve rodar em processo Node.js separado da API (`src/worker.ts`) com instância própria de `PrismaClient`, reutilizando `AppError` (prefixo `WEBHOOK_`), `errorMiddleware`, `validate` (Zod), `requireRole` e `logger` Pino. | `[09:11] Diego`, `[09:28] Bruno`, `[09:29] Larissa`, `[09:30] Bruno` |
 
 ---
@@ -111,8 +111,8 @@ Todos os requisitos funcionais abaixo refletem diretamente as definições fecha
 ## 8. Decisões e Trade-offs Principais
 
 1. **Outbox Transacional no MySQL vs. Chamada Síncrona ou Redis Streams**: Priorizou-se a consistência ACID com a mudança de status do pedido e zero infraestrutura adicional em vez de introduzir um cluster Redis ou arriscar travar transações com chamadas HTTP síncronas (`[09:04] Bruno`, `[09:06] Diego`, `[09:07] Diego`).
-2. **Polling de 2 Segundos em Single-Worker vs. Triggers ou Multi-Worker Complexo**: Escolheu-se um loop simples de 2s em processo separado que cumpre com folga a meta $< 10\text{s}$ e mantém a ordem dos eventos por pedido sem precisar de particionamento ou locks distribuídos na v1 (`[09:09] Diego`, `[09:12] Diego`).
-3. **5 Tentativas (~15h) + DLQ Dedicada vs. 3 Tentativas (~30m) ou Retry Infinito**: Equilibrou-se a cobertura de manutenções planejadas reais dos clientes (2h+) com a proteção do banco contra eventos eternamente pendurados (`[09:15] Diego`, `[09:16] Diego`, `[09:17] Diego`).
+2. **Polling de 2 Segundos em Single-Worker vs. Triggers ou Multi-Worker Complexo**: Escolheu-se um loop simples de 2s em processo separado que cumpre com folga a meta $< 10\text{s}$ e preserva a ordem por pedido mediante a seleção com predecessor descrita no FDD, sem habilitar multi-worker na v1 (`[09:09] Diego`, `[09:12] Diego`).
+3. **5 Retentativas após o Envio Inicial (~15h) + DLQ Dedicada vs. 3 Tentativas (~30m) ou Retry Infinito**: Equilibrou-se a cobertura de manutenções planejadas reais dos clientes (2h+) com a proteção do banco contra eventos eternamente pendurados (`[09:15] Diego`, `[09:16] Diego`, `[09:17] Diego`).
 4. **At-Least-Once com `X-Event-Id` vs. Exactly-Once**: Adotou-se o padrão de mercado (Stripe, GitHub), mantendo o protocolo leve e documentando para o cliente a responsabilidade de deduplicar por `X-Event-Id` (`[09:25] Diego`, `[09:26] Marcos`).
 
 ---
@@ -130,6 +130,8 @@ Todos os requisitos funcionais abaixo refletem diretamente as definições fecha
 
 ## 10. Riscos e Mitigação
 
+As probabilidades abaixo são estimativas qualitativas propostas na elaboração, não frequências medidas nem afirmações dos participantes. As fontes fundamentam o risco e sua mitigação.
+
 | ID | Descrição do Risco | Probabilidade | Impacto | Plano de Mitigação | Origem |
 | :--- | :--- | :---: | :---: | :--- | :--- |
 | `PRD-RISK-01` | **Atraso na entrega além do fim de novembro resultar em churn da Atlas Comercial** | Baixa | Alto | Escopo enxuto (sem painel visual, sem e-mail, sem Redis novo), reuso total dos padrões do OMS e cronograma estruturado em 3 sprints com confirmação imediata junto ao cliente. | `[09:00] Marcos`, `[09:45] Marcos`, `[09:46] Larissa` |
@@ -142,13 +144,13 @@ Todos os requisitos funcionais abaixo refletem diretamente as definições fecha
 
 ## 11. Critérios de Aceitação
 
-1. Um usuário autenticado consegue cadastrar (`POST /api/v1/webhooks`), listar (`GET`), editar (`PATCH`) e excluir (`DELETE`) webhooks para um `customerId`, recebendo a `secret` gerada na criação e erro `400` caso informe uma URL sem `https://`.
-2. Quando um pedido muda de status em `PATCH /api/v1/orders/:id/status`, o evento é gravado atomicamente na `webhook_outbox` com snapshot JSON ($\le 64\text{KB}$, sem `items`) apenas para os webhooks ativos daquele cliente que assinam o novo status.
-3. O worker em processo separado (`src/worker.ts`) envia o webhook em menos de 10 segundos (polling de 2s) com os headers `X-Event-Id`, `X-Signature` (`HMAC-SHA256`), `X-Timestamp`, `X-Webhook-Id` e `Content-Type: application/json`.
-4. Ao rotacionar a secret (`POST /api/v1/webhooks/:id/rotate-secret`), a chave antiga continua válida em paralelo por 24 horas.
-5. O cliente consegue consultar os últimos 100 disparos em `GET /api/v1/webhooks/:id/deliveries` com status de sucesso/falha, payload, response e tempo de resposta.
-6. Falhas de entrega (timeout $> 10\text{s}$ ou HTTP não-2xx) são retentadas 5 vezes (`1m, 5m, 30m, 2h, 12h`) e, após a 5ª falha, movidas para `webhook_dead_letter`.
-7. Apenas usuários com role `ADMIN` conseguem acionar `POST /api/v1/admin/webhooks/dead-letter/:id/replay`, reenfileirando o evento na outbox e gerando log de auditoria.
+1. **`PRD-CA-01`** — Um usuário autenticado consegue cadastrar (`POST /api/v1/webhooks`), listar (`GET`), editar (`PATCH`) e excluir (`DELETE`) webhooks para um `customerId`, recebendo a `secret` gerada na criação e erro `400` caso informe uma URL sem `https://`.
+2. **`PRD-CA-02`** — Quando um pedido muda de status em `PATCH /api/v1/orders/:id/status`, o evento é gravado atomicamente na `webhook_outbox` com snapshot JSON ($\le 64\text{KB}$, sem `items`) apenas para os webhooks ativos daquele cliente que assinam o novo status.
+3. **`PRD-CA-03`** — O worker em processo separado (`src/worker.ts`) tem como meta confirmar a primeira entrega em menos de 10 segundos em condições normais; a validação mede fila + rede, além do polling de 2s, e identifica atrasos por retry, DLQ ou saturação. Os envios contêm os headers `X-Event-Id`, `X-Signature` (`HMAC-SHA256`), `X-Timestamp`, `X-Webhook-Id` e `Content-Type: application/json`.
+4. **`PRD-CA-04`** — Ao rotacionar a secret (`POST /api/v1/webhooks/:id/rotate-secret`), a chave antiga continua válida em paralelo por 24 horas.
+5. **`PRD-CA-05`** — O cliente consegue consultar os últimos 100 disparos em `GET /api/v1/webhooks/:id/deliveries` com status de sucesso/falha, payload, response e tempo de resposta.
+6. **`PRD-CA-06`** — Falhas de entrega (timeout $> 10\text{s}$ ou HTTP não-2xx) são retentadas 5 vezes (`1m, 5m, 30m, 2h, 12h`) e, após falhar a última retentativa (6ª chamada), movidas para `webhook_dead_letter`.
+7. **`PRD-CA-07`** — Apenas usuários com role `ADMIN` conseguem acionar `POST /api/v1/admin/webhooks/dead-letter/:id/replay`, reenfileirando o evento na outbox e gerando log de auditoria.
 
 ---
 
@@ -159,10 +161,11 @@ Planejamento de validação distribuído ao longo das 3 sprints (`[09:46] Lariss
 1. **Testes Unitários (Vitest)**:
    - Geração de `secret`, cálculo de assinatura `HMAC-SHA256` e lógica de vigência do *grace period* de 24h.
    - Validação de schemas Zod (rejeição de `http://`, validação de `OrderStatus[]`, limite de 64KB).
+   - Validação de múltiplos digests, expiração da chave antiga e recusa de rotações sobrepostas.
    - Cálculo dos intervalos de backoff exponencial (`1m, 5m, 30m, 2h, 12h`).
 2. **Testes de Integração e Ponta a Ponta (Vitest + Supertest + MySQL)**:
    - Verificação da atomicidade transacional em `OrderService.changeStatus` (garantindo que falha na outbox reverte a mudança de status e vice-versa, e que status não assinados não geram linhas na outbox).
    - Testes de contrato das 7 rotas HTTP (`/api/v1/webhooks/*` e `/api/v1/admin/webhooks/dead-letter/:id/replay`), validando bloqueio `403 FORBIDDEN` para `OPERATOR` no endpoint de replay e emissão do log de auditoria.
-   - Simulação do ciclo do worker com servidor receptor mockado (sucesso `200`, timeout $> 10\text{s}$, 5 falhas consecutivas e transição para `webhook_dead_letter`).
+   - Simulação do ciclo do worker com servidor receptor mockado (sucesso `200`, timeout $> 10\text{s}$, falha inicial e cinco retries, recuperação de crash, ordenação sob retry/DLQ, replay concorrente, novo esgotamento após replay e transição para `webhook_dead_letter`).
 3. **Revisão Dedicada de Segurança (Gate Pré-Deploy)**:
    - Reserva obrigatória de **2 dias úteis** ao final da sprint 3 para auditoria de código pela engenheira de segurança (**Sofia**), inspecionando a implementação de `HMAC-SHA256`, entropia e rotação de `secret` e *redaction* de logs antes da liberação em produção (`[09:46] Sofia`, `[09:47] Larissa`, `[09:49] Sofia`).

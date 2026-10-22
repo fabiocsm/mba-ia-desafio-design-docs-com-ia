@@ -8,7 +8,7 @@
 
 Este projeto consiste na transformação da transcrição bruta de uma reunião técnica de 55 minutos (`TRANSCRICAO.md`) e da base de código existente de um **Order Management System (OMS)** (Node.js, TypeScript, Express, MySQL/Prisma, Zod e Pino) em um pacote completo, coeso e diretamente acionável de documentação de engenharia para uma nova feature: o **Sistema de Outbound Webhooks de Notificação de Pedidos**.
 
-O desafio central não é apenas resumir uma conversa, mas atuar como **maestro da Inteligência Artificial** aplicando separação estrita de alturas documentais — **ADRs** (*Por que decidimos exatamente assim?*), **RFC** (*Como pretendemos resolver e o que segue em aberto?*), **FDD** (*Como construir em detalhe e integrar ao código real?*), **PRD** (*Por que construir, para quem e com quais metas?*) e **Tracker** (*De onde veio cada afirmação?*) — filtrando com rigor o que foi descartado ou adiado na reunião e garantindo **zero alucinação** sem tocar em nenhuma linha de código da aplicação (`src/`, `prisma/`, `tests/`).
+O desafio central não é apenas resumir uma conversa, mas atuar como **maestro da Inteligência Artificial** aplicando separação estrita de alturas documentais — **ADRs** (*Por que decidimos exatamente assim?*), **RFC** (*Como pretendemos resolver e o que segue em aberto?*), **FDD** (*Como construir em detalhe e integrar ao código real?*), **PRD** (*Por que construir, para quem e com quais metas?*) e **Tracker** (*De onde veio cada afirmação?*) — filtrando com rigor o que foi descartado ou adiado na reunião e garantindo **rastreabilidade verificável** sem tocar em nenhuma linha de código da aplicação (`src/`, `prisma/`, `tests/`).
 
 ---
 
@@ -17,6 +17,7 @@ O desafio central não é apenas resumir uma conversa, mas atuar como **maestro 
 | Ferramenta / Agente | Papel Desempenhado no Processo |
 | :--- | :--- |
 | **Google Antigravity (IDE Agêntica com Gemini)** | Ambiente principal de orquestração *human-in-the-loop*, leitura contextualizada do repositório (`src/**`, `prisma/schema.prisma`, `tests/**`), cruzamento linha a linha com `TRANSCRICAO.md`, geração dirigida dos artefatos Markdown e execução de scripts de auditoria. |
+| **OpenAI Codex** | Revisão do PR contra o enunciado, correção documental e nova auditoria de consistência nesta etapa; sem alterar o código da aplicação. |
 | **GitHub Spec Kit (`speckit-*` Skills)** | Framework de engenharia de especificação utilizado para estruturar o fluxo em etapas verificáveis (`constitution` $\rightarrow$ `specify` $\rightarrow$ `plan` $\rightarrow$ `tasks` $\rightarrow$ `analyze` $\rightarrow$ `implement`), estabelecendo portões de qualidade antes da redação final dos documentos em `docs/`. |
 
 ---
@@ -40,9 +41,9 @@ flowchart LR
 2. **Governança Anti-Alucinação (`constitution.md`)**: Definição formal das regras inegociáveis do projeto (rastreabilidade `[hh:mm] Nome` ou arquivo real, imutabilidade de `src/`/`prisma/`/`tests/`/`TRANSCRICAO.md` e separação de alturas entre documentos).
 3. **ADRs Primeiro (`docs/adrs/ADR-001` a `ADR-006`)**: Formalização das 6 decisões arquiteturais fundamentais em formato MADR antes de escrever os documentos maiores, fixando o vocabulário técnico e os trade-offs.
 4. **RFC (`docs/RFC.md`)**: Consolidação da proposta técnica em nível arquitetural conciso (2–4 páginas), reunindo as 6 alternativas descartadas na reunião com seus trade-offs, as 5 questões deixadas em aberto e links diretos para os 6 ADRs.
-5. **FDD (`docs/FDD.md`)**: Especificação profunda de construção contendo modelagem de dados Prisma, diagramas de sequência (outbox, worker 2s, retry `1m/5m/30m/2h/12h` e DLQ), 7 contratos de endpoints REST + contrato do POST outbound, matriz de 10 erros `WEBHOOK_*`, resiliência, observabilidade (métricas, logs Pino e tracing via `X-Event-Id`) e a seção obrigatória **"Integração com o sistema existente"** detalhando 12 arquivos reais do repositório.
+5. **FDD (`docs/FDD.md`)**: Especificação profunda de construção contendo modelagem de dados Prisma, diagramas de sequência (outbox, worker 2s, retry `1m/5m/30m/2h/12h` e DLQ), 7 contratos de endpoints REST + contrato do POST outbound, matriz de 11 erros `WEBHOOK_*`, resiliência, observabilidade (métricas, logs Pino e tracing via `X-Event-Id`) e a seção obrigatória **"Integração com o sistema existente"** detalhando 12 arquivos reais do repositório.
 6. **PRD (`docs/PRD.md`)**: Consolidação da visão de produto e negócio (dor de polling em `GET /api/v1/orders` dos clientes Atlas Comercial, MaxDistribuição e Nova Cargo, risco de churn até o fim do trimestre, 3 metas quantitativas, 5 exclusões explícitas de escopo, 12 requisitos funcionais, 8 não funcionais e 5 riscos com probabilidade, impacto e mitigação).
-7. **Tracker (`docs/TRACKER.md`)**: Construção e validação automatizada de uma matriz com **124 itens rastreados** (100% dos itens numerados nos documentos, sendo 90,3% `TRANSCRICAO` e 12 linhas `CODIGO`).
+7. **Tracker (`docs/TRACKER.md`)**: Construção de um inventário com **161 IDs explícitos**, sendo 134 linhas `TRANSCRICAO` (83,2%) e 27 `CODIGO`. A auditoria automatizada cobre os IDs e a existência das origens; a revisão semântica distingue decisões da reunião de detalhes propostos e está registrada em `specs/001-webhook-design-docs/review.md`.
 8. **README do Processo e Revisão Final**: Documentação transparente da jornada com IA e validação executável de todos os critérios de aceite.
 
 ---
@@ -72,7 +73,7 @@ Proibido inventar qualquer informação sem origem verificável em `[hh:mm] Nome
 Com base nos 6 ADRs (`docs/adrs/ADR-001` a `ADR-006`) e no `docs/RFC.md`, elabore o Feature Design Document em `docs/FDD.md`.
 Respeite a altura de Implementação ("Como construir, em detalhe?"):
 - Especifique os 4 modelos Prisma propostos (`WebhookEndpoint`, `WebhookOutbox`, `WebhookDelivery`, `WebhookDeadLetter`) usando `String @id @default(uuid()) @db.Char(36)` conforme `prisma/schema.prisma` e `[09:51] Larissa`.
-- Detalhe os 4 fluxos operacionais: (1) criação atômica via função pura `publishWebhookEvent(tx, order, fromStatus, toStatus)` com filtro de status na inserção e validação de teto de 64KB; (2) polling a cada 2s em `src/worker.ts`; (3) curva de retry exponencial (5 tentativas: 1m, 5m, 30m, 2h, 12h) com timeout HTTP de 10s; (4) movimentação para `webhook_dead_letter` e replay manual por `ADMIN`.
+- Detalhe os 4 fluxos operacionais: (1) criação atômica via função pura `publishWebhookEvent(tx, order, fromStatus, toStatus)` com filtro de status na inserção e validação de teto de 64KB; (2) polling a cada 2s em `src/worker.ts`; (3) curva de retry exponencial (5 retentativas após o envio inicial: 1m, 5m, 30m, 2h, 12h) com timeout HTTP de 10s; (4) movimentação para `webhook_dead_letter` e replay manual por `ADMIN`.
 - Documente todos os contratos públicos HTTP (`/api/v1/webhooks` CRUD, `rotate-secret`, `deliveries`, `/api/v1/admin/webhooks/dead-letter/:id/replay` e o contrato do POST outbound com headers `X-Event-Id`, `X-Signature`, `X-Timestamp`, `X-Webhook-Id` e payload sem `items`).
 - Construa a Matriz de Erros Previstos usando exclusivamente códigos com prefixo `WEBHOOK_*` mapeados às classes de `src/shared/errors/http-errors.ts`.
 - Na seção obrigatória "Integração com o sistema existente", referencie apenas caminhos de arquivos reais existentes no repositório e mostre o snippet de integração em `src/modules/orders/order.service.ts`.
@@ -85,7 +86,7 @@ Varra todos os itens numerados em `docs/adrs/ADR-001..006-*.md`, `docs/RFC.md`, 
 `| ID | Documento | Tipo | Conteúdo (resumo) | Fonte | Localização |`
 
 Regras de validação:
-1. Cobertura de 100% dos itens identificáveis (superando o mínimo de 80%).
+1. Cobertura de Todos os IDs explícitos do inventário, com revisão semântica dos itens identificáveis (superando o mínimo de 80%).
 2. Cada linha com `Fonte = TRANSCRICAO` deve conter um `[hh:mm] Nome` que exista literalmente em `TRANSCRICAO.md` (mínimo de 70% das linhas totais).
 3. Cada linha com `Fonte = CODIGO` deve conter um caminho de arquivo real que exista em `src/` ou `prisma/` (mínimo de 5 linhas).
 4. Caso qualquer afirmação nos documentos não possua localização exata verificável na transcrição ou no código, sinalize imediatamente para remoção ou correção.
@@ -95,7 +96,7 @@ Regras de validação:
 
 ## Iterações e Ajustes
 
-O processo completo passou por **4 iterações principais** de geração, revisão crítica humana e refinamento até atingir o estado final:
+A produção inicial registrou **4 iterações principais**; a revisão do PR acrescentou uma quinta etapa de correção e nova verificação. A descrição original do processo foi preservada abaixo, seguida da revisão efetivamente executada. O trabalho inicial passou por 4 iterações de geração, revisão crítica humana e refinamento até atingir o estado final:
 
 1. **Iteração 1 — Captura das Decisões do "Pós-Reunião" (`[09:50]` a `[09:53]`) e Regra do `customerId` fora do JWT**:
    - *Problema identificado*: Na primeira leitura sumarizada, havia o risco de assumir que o `customerId` viria implícito do token JWT (como Marcos sugeriu inicialmente em `[09:31] Marcos`) e de omitir as definições tomadas após a saída de Marcos e Sofia da call (`[09:50]`).
@@ -109,6 +110,12 @@ O processo completo passou por **4 iterações principais** de geração, revis�
 4. **Iteração 4 — Auditoria Automatizada de Timestamps no `docs/TRACKER.md`**:
    - *Problema identificado*: Em tabelas extensas de rastreabilidade (124 linhas), referências combinadas (como `[09:21] / [09:22] Sofia`) dificultam a verificação mecânica contra `TRANSCRICAO.md`.
    - *Correção aplicada*: Normalizamos todas as 112 entradas `TRANSCRICAO` do `docs/TRACKER.md` para o formato canônico exato `[hh:mm] Nome` e executamos um script `awk` + `grep -Fq` confirmando que 100% dos timestamps e nomes de falantes existem literalmente em `TRANSCRICAO.md`.
+
+5. **Revisão do PR — Correções e Nova Verificação (Codex)**:
+   - Corrigimos a contagem de retry para explicitar envio inicial + cinco retentativas, a recuperação de PROCESSING, o replay por ciclos e o bloqueio de sucessores sob retry/DLQ.
+   - Alinhamos os contratos aos construtores reais de erro e à origem do enum OrderStatus; fixamos um único formato de assinatura e a proteção das 24h em rotações sucessivas.
+   - A segunda revisão também corrigiu desempate de eventos com timestamps iguais, métrica de latência total versus duração HTTP e afirmações indevidas de garantia universal de entrega/retrocompatibilidade.
+   - Os detalhes derivados estão identificados como propostas, com fundamento e justificativa no FDD e encaminhamento de revisão no RFC. A auditoria de imutabilidade compara a entrega com o commit base, incluindo mudanças já commitadas. Resultados e limites estão no [relatório de revisão](./specs/001-webhook-design-docs/review.md).
 
 ---
 
@@ -125,20 +132,21 @@ O processo completo passou por **4 iterações principais** de geração, revis�
 │   │   ├── README.md                                                # Índice navegável dos ADRs
 │   │   ├── ADR-001-outbox-no-mysql.md                               # Outbox transacional no MySQL + snapshot JSON + UUID
 │   │   ├── ADR-002-worker-separado-em-polling.md                    # Worker em processo separado + polling de 2s
-│   │   ├── ADR-003-politica-de-retry-backoff-e-dlq.md               # 5 retries (1m/5m/30m/2h/12h), timeout 10s e DLQ
+│   │   ├── ADR-003-politica-de-retry-backoff-e-dlq.md               # envio inicial + 5 retries (1m/5m/30m/2h/12h), timeout 10s e DLQ
 │   │   ├── ADR-004-autenticacao-hmac-sha256-e-rotacao-de-secret.md  # HMAC-SHA256, secret única e rotação com grace period 24h
 │   │   ├── ADR-005-entrega-at-least-once-com-x-event-id.md          # Entrega at-least-once e deduplicação por X-Event-Id
 │   │   └── ADR-006-reuso-dos-padroes-existentes-do-oms.md           # Reuso de AppError (WEBHOOK_*), Pino, Zod e função pura
 │   ├── RFC.md                                                       # [Altura: Arquitetura] Proposta técnica, alternativas e pendências
 │   ├── FDD.md                                                       # [Altura: Implementação] Fluxos, contratos HTTP, erros e código
 │   ├── PRD.md                                                       # [Altura: Produto/Negócio] Problema, escopo, requisitos e métricas
-│   └── TRACKER.md                                                   # [Altura: Transversal] Matriz de rastreabilidade (124 itens)
+│   └── TRACKER.md                                                   # [Altura: Transversal] Matriz de rastreabilidade (161 IDs explícitos)
 └── specs/001-webhook-design-docs/                                   # Artefatos de planejamento e auditoria (Spec Kit)
     ├── enunciado-original.md                                        # Cópia preservada do enunciado original do desafio
     ├── spec.md                                                      # Especificação dos entregáveis
     ├── plan.md                                                      # Plano técnico de execução
     ├── research.md                                                  # Mapeamento preliminar da transcrição e código
     ├── data-model.md                                                # Modelo de entidades documentais e de domínio
+    ├── review.md                                                    # Correções, segunda revisão e evidências
     ├── quickstart.md                                                # Scripts executáveis de auditoria dos critérios de aceite
     └── tasks.md                                                     # Lista de tarefas executadas
 ```
@@ -150,5 +158,5 @@ Para avaliar o pacote na sequência mais fluida de contexto (do problema de neg�
 1. **[`docs/PRD.md`](./docs/PRD.md)** — Comece pelo **PRD** para entender a dor dos clientes B2B (Atlas Comercial, MaxDistribuição e Nova Cargo), as metas quantitativas ($< 10\text{s}$ de latência, entrega em 3 sprints), o que foi explicitamente deixado **fora de escopo** e os 12 requisitos funcionais + 8 não funcionais.
 2. **[`docs/RFC.md`](./docs/RFC.md)** — Leia em seguida o **RFC** para ter a visão arquitetural concisa da solução, compreender por que 6 alternativas técnicas foram descartadas na reunião e quais 5 questões permaneceram em aberto.
 3. **[`docs/adrs/`](./docs/adrs/README.md)** ([`ADR-001`](./docs/adrs/ADR-001-outbox-no-mysql.md) a [`ADR-006`](./docs/adrs/ADR-006-reuso-dos-padroes-existentes-do-oms.md)) — Consulte os **6 ADRs** para aprofundar o contexto, as alternativas consideradas e o trade-off explícito de cada decisão isolada.
-4. **[`docs/FDD.md`](./docs/FDD.md)** — Inspecione o **FDD** para ver a especificação pronta para codificação: modelos Prisma, diagramas de sequência, 7 endpoints REST + contrato do POST de saída, matriz de erros `WEBHOOK_*`, observabilidade e a seção **Integração com o sistema existente**.
+4. **[`docs/FDD.md`](./docs/FDD.md)** — Inspecione o **FDD** para ver a especificação pronta para codificação: modelos Prisma, diagramas de sequência, 7 endpoints REST + contrato do POST de saída, matriz de erros de domínio `WEBHOOK_*`, observabilidade e a seção **Integração com o sistema existente**.
 5. **[`docs/TRACKER.md`](./docs/TRACKER.md)** — Por fim, utilize o **Tracker** para auditar a origem exata de qualquer item em `TRANSCRICAO.md` (`[hh:mm] Nome`) ou no código-fonte (`src/` e `prisma/`).
