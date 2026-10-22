@@ -18,9 +18,9 @@ Aceito (Decidido na reunião técnica — `[09:17] Larissa`, `[09:18] Diego`, `[
 Como os webhooks são enviados para servidores externos operados pelos clientes B2B (fora da infraestrutura do OMS), falhas transitórias de rede, lentidão ou janelas de manutenção nos sistemas receptores são inevitáveis (`[09:14] Larissa`, `[09:16] Diego`). Na prática operacional da empresa, clientes já apresentaram janelas de indisponibilidade de até 2 horas durante manutenções planejadas (`[09:16] Diego`).
 
 A equipe precisava definir:
-1. Quanto tempo aguardar por uma resposta HTTP antes de considerar a tentativa falha;
-2. Quantas vezes retentar e com qual espaçamento temporal (*backoff*);
-3. Onde armazenar eventos que esgotarem todas as tentativas (*Dead-Letter Queue* — DLQ) e quem pode autorizar seu reprocessamento manual.
+1. **`ADR-003-CTX-01`** — Quanto tempo aguardar por uma resposta HTTP antes de considerar a tentativa falha;
+2. **`ADR-003-CTX-02`** — Quantas vezes retentar e com qual espaçamento temporal (*backoff*);
+3. **`ADR-003-CTX-03`** — Onde armazenar eventos que esgotarem todas as tentativas (*Dead-Letter Queue* — DLQ) e quem pode autorizar seu reprocessamento manual.
 
 ---
 
@@ -28,8 +28,8 @@ A equipe precisava definir:
 
 Estabelecemos uma política determinística de resiliência baseada em **timeout de 10s, 5 retentativas com backoff exponencial (~15h) e tabela dedicada de Dead-Letter Queue com replay restrito a `ADMIN`** (`ADR-003`):
 
-1. **Timeout HTTP de 10 Segundos (`[09:42] Sofia`, `[09:42] Diego`)**: Cada requisição HTTP POST disparada pelo worker terá timeout estrito de `10.000 ms` (10 segundos). Caso o endpoint do cliente não responda dentro de 10s, ou retorne status HTTP não-2xx / erro de rede, a tentativa é registrada no histórico (`webhook_deliveries`) como falha e agendada para retry.
-2. **Limite de 5 Retentativas após o Envio Inicial com Backoff Exponencial (`[09:15] Diego`, `[09:16] Larissa`, `[09:17] Diego`, `[09:17] Larissa`)**: Após uma falha, o evento é reagendado por até **5 retentativas após o envio inicial** seguindo a progressão de intervalos:
+1. **`ADR-003-DEC-01`** — **Timeout HTTP de 10 Segundos (`[09:42] Sofia`, `[09:42] Diego`)**: Cada requisição HTTP POST disparada pelo worker terá timeout estrito de `10.000 ms` (10 segundos). Caso o endpoint do cliente não responda dentro de 10s, ou retorne status HTTP não-2xx / erro de rede, a tentativa é registrada no histórico (`webhook_deliveries`) como falha e agendada para retry.
+2. **`ADR-003-DEC-02`** — **Limite de 5 Retentativas após o Envio Inicial com Backoff Exponencial (`[09:15] Diego`, `[09:16] Larissa`, `[09:17] Diego`, `[09:17] Larissa`)**: Após uma falha, o evento é reagendado por até **5 retentativas após o envio inicial** seguindo a progressão de intervalos:
    - Retentativa 1 (após falha inicial): **1 minuto**
    - Retentativa 2: **5 minutos**
    - Retentativa 3: **30 minutos**
@@ -39,8 +39,8 @@ Estabelecemos uma política determinística de resiliência baseada em **timeout
 
 **Interpretação documentada para revisão (`FDD-DET-01`)**: a fala usa “5 tentativas”, mas fornece cinco esperas e quase 15h. Este pacote adota envio inicial + cinco retentativas (seis chamadas por ciclo), preservando todos os intervalos. A contagem explícita é proposta de interpretação, não frase literal da reunião.
 
-3. **Tabela Dedicada `webhook_dead_letter` (`[09:17] Larissa`, `[09:18] Diego`)**: Esgotados o envio inicial e as 5 retentativas sem sucesso, o evento na `webhook_outbox` é marcado como `FAILED` e um registro é persistido na tabela separada `webhook_dead_letter` contendo o `payload` original, o motivo da falha (`failure_reason`), número de tentativas e timestamp (`failed_at`). O FDD propõe identificar cada ciclo por `(outboxId, cycle)`, permitindo nova entrada após replay sem perder o histórico anterior (`FDD-DET-03`).
-4. **Replay Manual Exclusivo para `ADMIN` com Auditoria (`[09:18] Diego`, `[09:35] Diego`, `[09:36] Sofia`, `[09:36] Larissa`)**: O reprocessamento de eventos da DLQ será exposto no endpoint `POST /api/v1/admin/webhooks/dead-letter/:id/replay`, protegido obrigatoriamente pelo middleware `requireRole('ADMIN')` (`src/middlewares/auth.middleware.ts`), recolocando o evento na `webhook_outbox` como `PENDING` e emitindo log estruturado de auditoria via Pino (`src/shared/logger/index.ts`) identificando o administrador (`req.user.id` e `req.user.email`).
+3. **`ADR-003-DEC-03`** — **Tabela Dedicada `webhook_dead_letter` (`[09:17] Larissa`, `[09:18] Diego`)**: Esgotados o envio inicial e as 5 retentativas sem sucesso, o evento na `webhook_outbox` é marcado como `FAILED` e um registro é persistido na tabela separada `webhook_dead_letter` contendo o `payload` original, o motivo da falha (`failure_reason`), número de tentativas e timestamp (`failed_at`). O FDD propõe identificar cada ciclo por `(outboxId, cycle)`, permitindo nova entrada após replay sem perder o histórico anterior (`FDD-DET-03`).
+4. **`ADR-003-DEC-04`** — **Replay Manual Exclusivo para `ADMIN` com Auditoria (`[09:18] Diego`, `[09:35] Diego`, `[09:36] Sofia`, `[09:36] Larissa`)**: O reprocessamento de eventos da DLQ será exposto no endpoint `POST /api/v1/admin/webhooks/dead-letter/:id/replay`, protegido obrigatoriamente pelo middleware `requireRole('ADMIN')` (`src/middlewares/auth.middleware.ts`), recolocando o evento na `webhook_outbox` como `PENDING` e emitindo log estruturado de auditoria via Pino (`src/shared/logger/index.ts`) identificando o administrador (`req.user.id` e `req.user.email`).
 
 ---
 
@@ -63,13 +63,13 @@ Estabelecemos uma política determinística de resiliência baseada em **timeout
 ## Consequências
 
 ### Positivas
-- **Resiliência a Manutenções Reais de Clientes**: A curva `1m / 5m / 30m / 2h / 12h` recupera automaticamente falhas de segundos (rede instável), minutos (deploy do cliente) e horas (manutenção planejada de até ~15h) sem intervenção humana (`[09:16] Diego`, `[09:17] Diego`).
-- **Governança e Segurança Operacional**: O uso de `requireRole('ADMIN')` (`src/middlewares/auth.middleware.ts`) aliado ao log de auditoria impede que operadores comuns manipulem filas de falha e garante rastreabilidade completa exigida pela equipe de Segurança (`[09:36] Sofia`).
-- **Isolamento da Tabela Operacional**: A tabela `webhook_dead_letter` preserva a performance do índice de polling da `webhook_outbox` (`[09:18] Diego`).
+- **`ADR-003-CONS-01`** — **Resiliência a Manutenções Reais de Clientes**: A curva `1m / 5m / 30m / 2h / 12h` recupera automaticamente falhas de segundos (rede instável), minutos (deploy do cliente) e horas (manutenção planejada de até ~15h) sem intervenção humana (`[09:16] Diego`, `[09:17] Diego`).
+- **`ADR-003-CONS-02`** — **Governança e Segurança Operacional**: O uso de `requireRole('ADMIN')` (`src/middlewares/auth.middleware.ts`) aliado ao log de auditoria impede que operadores comuns manipulem filas de falha e garante rastreabilidade completa exigida pela equipe de Segurança (`[09:36] Sofia`).
+- **`ADR-003-CONS-03`** — **Isolamento da Tabela Operacional**: A tabela `webhook_dead_letter` preserva a performance do índice de polling da `webhook_outbox` (`[09:18] Diego`).
 
 ### Negativas
-- **Necessidade de Ação Manual Após 15 Horas**: Se o servidor do cliente ficar indisponível por mais de 15 horas, os eventos não serão reenviados automaticamente quando o cliente voltar, exigindo acionamento manual do endpoint de replay por um `ADMIN`; a duração real inclui tempos HTTP, polling e eventual espera por predecessores (`[09:17] Marcos`, `[09:18] Diego`).
-- **Ausência de Alerta Ativo por E-mail na v1**: Como notificações por e-mail em caso de falhas consecutivas ficaram fora do escopo desta fase (`[09:37] Larissa`), o cliente precisará consultar `GET /api/v1/webhooks/:id/deliveries` ou acionar o suporte para identificar endpoints em falha.
+- **`ADR-003-CONS-04`** — **Necessidade de Ação Manual Após 15 Horas**: Se o servidor do cliente ficar indisponível por mais de 15 horas, os eventos não serão reenviados automaticamente quando o cliente voltar, exigindo acionamento manual do endpoint de replay por um `ADMIN`; a duração real inclui tempos HTTP, polling e eventual espera por predecessores (`[09:17] Marcos`, `[09:18] Diego`).
+- **`ADR-003-CONS-05`** — **Ausência de Alerta Ativo por E-mail na v1**: Como notificações por e-mail em caso de falhas consecutivas ficaram fora do escopo desta fase (`[09:37] Larissa`), o cliente precisará consultar `GET /api/v1/webhooks/:id/deliveries` ou acionar o suporte para identificar endpoints em falha.
 
 ### Trade-off Explícito (`ADR-003-TRD-01`)
 Trocamos a **recuperação automática infinita** (que acumularia lixo operacional de endpoints abandonados) e o **descarte rápido em 30 minutos** (que perderia eventos em manutenções de rotina) por uma **janela finita de 5 retentativas após o envio inicial em ~15 horas com isolamento em tabela `webhook_dead_letter`**, aceitando que indisponibilidades superiores a 15h demandem replay manual auditado por um usuário `ADMIN` (`[09:15] Diego`, `[09:17] Diego`, `[09:18] Diego`, `[09:36] Sofia`).

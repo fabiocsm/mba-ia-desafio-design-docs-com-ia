@@ -32,7 +32,7 @@ Produzir o pacote completo, consistente e rastreável de documentação técnica
 - Fronteira estrita de altura entre documentos (RFC conciso de 2–4 páginas sem repetir o detalhamento de implementação do FDD).
 - Filtragem obrigatória de ideias descartadas ou adiadas na reunião (não podem entrar como requisitos ativos).
 
-**Scale/Scope**: 11 arquivos Markdown finais a produzir/atualizar (`6` ADRs em `docs/adrs/`, `docs/RFC.md`, `docs/FDD.md`, `docs/PRD.md`, `docs/TRACKER.md` e `README.md`), cobrindo 6 decisões arquiteturais, 7 contratos de endpoints HTTP + 1 contrato de payload outbound, 11 códigos de erro `WEBHOOK_*`, 12 requisitos funcionais, 8 requisitos não funcionais e 161 IDs explícitos rastreados no Tracker.
+**Scale/Scope**: 11 arquivos Markdown finais a produzir/atualizar (`6` ADRs em `docs/adrs/`, `docs/RFC.md`, `docs/FDD.md`, `docs/PRD.md`, `docs/TRACKER.md` e `README.md`), cobrindo 6 decisões arquiteturais, 7 contratos de endpoints HTTP + 1 contrato de payload outbound, 11 códigos de erro `WEBHOOK_*`, 12 requisitos funcionais, 8 requisitos não funcionais e 266 unidades identificáveis rastreadas no Tracker.
 
 ## Constitution Check
 
@@ -87,7 +87,7 @@ specs/001-webhook-design-docs/
 │   └── schema.prisma                        # Modelos existentes: User, Customer, Product, Order, OrderItem, OrderStatusHistory
 ├── src/                                     # [IMUTÁVEL - REFERÊNCIA DE CÓDIGO]
 │   ├── app.ts                               # Composição de controllers e middlewares
-│   ├── server.ts                            # Entrypoint HTTP e graceful shutdown (base para src/worker.ts proposto)
+│   ├── server.ts                            # Entrypoint HTTP e graceful shutdown (base para entrypoint dedicado do worker proposto)
 │   ├── config/
 │   │   ├── database.ts                      # Factory createPrismaClient()
 │   │   └── env.ts                           # Validação Zod de variáveis de ambiente
@@ -125,4 +125,4 @@ specs/001-webhook-design-docs/
 
 A revisão posterior corrigiu inconsistências não detectadas pelos gates iniciais. As verificações e seus limites estão em [review.md](./review.md); detalhes derivados estão explicitamente submetidos à revisão em RFC-REVIEW-01. Os rótulos PASS acima registram a avaliação do plano e não substituem a auditoria final.
 
-**Sincronização após revisão**: o FDD é a fonte canônica dos fluxos, schema e contratos. O Tracker possui 161 IDs explícitos (134 TRANSCRICAO e 27 CODIGO); a existência da referência é validada automaticamente e seu conteúdo passa por revisão semântica.
+**Sincronização após revisão**: o FDD é a fonte canônica dos fluxos, schema e contratos. O Tracker possui 266 unidades identificáveis (224 TRANSCRICAO e 42 CODIGO); a existência da referência é validada automaticamente e seu conteúdo passa por revisão semântica.

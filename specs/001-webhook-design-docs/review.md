@@ -31,7 +31,7 @@ A leitura cruzada após as correções identificou riscos de inconsistência que
 - Persistência após resultado de commit incerto: unicidade (outboxId, cycle, attemptNumber), upsert do resultado e atualização condicional da outbox evitam duplicação de histórico ao repetir a persistência.
 - Planejamento com contratos duplicados: data-model.md e webhook-http-contracts.md apontam para o FDD canônico e refletem os mesmos estados e contadores.
 
-## Validação e Limites
+## Validação da Primeira Correção (Snapshot Histórico)
 
 | Verificação executada | Resultado |
 | --- | --- |
@@ -50,3 +50,13 @@ A leitura cruzada após as correções identificou riscos de inconsistência que
 Após os ajustes adicionais acima, a última leitura cruzada e as verificações não identificaram novas inconsistências no escopo revisado. As limitações operacionais foram documentadas em vez de apresentadas como garantias universais.
 
 As propostas FDD-DET-01 a FDD-DET-08 estão submetidas à revisão técnica em RFC-REVIEW-01. Esta revisão documental não inventa aprovação dos participantes, não implementa a feature e não comprova seu comportamento em produção.
+
+## Auditoria Posterior dos Critérios de Aceite
+
+A solicitação de conferência item a item ampliou a auditoria: o inventário anterior de 161 IDs foi substituído por 266 unidades identificáveis, levantadas também nas seções sem ID. Todas as 266 unidades têm linha no Tracker; 224 apontam para a transcrição (84,2%) e 42 para código existente.
+
+A [matriz de aceite](./checklists/acceptance.md) registra 31/31 critérios contemplados, as evidências e as correções: cobertura mensurável, referências estritas a arquivos existentes e quatro pares explícitos de payloads JSON de entrada/saída no FDD. A conferência semântica também condicionou a atomicidade do ADR-001 à existência de assinaturas e removeu a promessa residual de latência garantida pelo polling no PRD. As fontes dos novos itens foram conferidas por conteúdo, incluindo o timeout/retry/DLQ e os componentes reais da arquitetura.
+
+O [quickstart](./quickstart.md) valida agora todas as referências concretas nos Markdown da entrega, sem exceções por prefixo, e a presença de cada ID no documento indicado pelo Tracker. Esta etapa não alterou os modelos Prisma propostos, apenas a documentação e os exemplos de request; os números e limites da tabela anterior são históricos, não os resultados atuais.
+
+**Verificação final desta auditoria**: 31 critérios registrados com evidência, 266/266 unidades rastreadas, 224 fontes TRANSCRICAO e 42 CODIGO, 15 caminhos concretos distintos existentes, 14 caminhos na integração e 11 exemplos JSON válidos no FDD. Tabelas, links locais, referências de transcrição e imutabilidade passaram; diff sem erros de whitespace.

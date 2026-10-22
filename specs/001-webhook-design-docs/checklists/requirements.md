@@ -1,5 +1,7 @@
 # Checklist da Revisão Documental
 
+**Matriz completa dos 31 critérios**: [acceptance.md](./acceptance.md).
+
 **Referência**: [enunciado original](../enunciado-original.md). **Resultados e limites**: [review.md](../review.md).
 
 ## Estrutura e Escopo
@@ -13,7 +15,7 @@
 
 ## Rastreabilidade e Coerência
 
-- [x] Todos os 161 IDs explícitos têm linha única no Tracker; 134 fontes TRANSCRICAO e 27 CODIGO.
+- [x] Todas as 266 unidades identificáveis têm linha única no Tracker; 224 fontes TRANSCRICAO e 42 CODIGO.
 - [x] Marcadores de transcrição e caminhos de código do Tracker existem nas fontes; fontes adicionais relevantes foram incluídas.
 - [x] Propostas derivadas distinguem fundamento e interpretação de decisão literal da reunião; revisão técnica encaminhada no RFC.
 - [x] Retry distingue envio inicial e cinco retentativas; quinta espera de 12h alcançável.

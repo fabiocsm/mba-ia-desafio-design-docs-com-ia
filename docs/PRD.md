@@ -20,9 +20,9 @@ A solução oferece API completa para gerenciamento de endpoints de webhook, sel
 
 Na semana anterior à reunião técnica, três clientes B2B estratégicos — **Atlas Comercial**, **MaxDistribuição** e **Nova Cargo** — formalizaram a necessidade de receber notificações ativas de mudança de status de pedidos (`[09:00] Marcos`):
 
-1. **Ineficiência e Custo de Integração por Polling**: Atualmente, os sistemas desses clientes precisam consultar repetidamente o endpoint `GET /api/v1/orders` de tempos em tempos para descobrir se houve atualização de status, tornando a integração lenta, ineficiente e custosa para os clientes e gerando carga desnecessária na API do OMS (`[09:00] Marcos`, `[09:02] Marcos`).
-2. **Risco Iminente de Churn (Retenção de Receita B2B)**: A **Atlas Comercial** sinalizou explicitamente que, caso a funcionalidade não seja entregue até o final do trimestre; o prazo solicitado para a feature é o fim de novembro, poderá migrar sua operação para um concorrente (`[09:00] Marcos`, `[09:45] Marcos`).
-3. **Necessidade de Confiabilidade sem Intervenção Manual**: Os clientes precisam que as atualizações não fiquem pendentes de atualização manual e sejam entregues mesmo diante de oscilações ou janelas de manutenção planejada em seus servidores (`[09:02] Marcos`, `[09:16] Diego`).
+1. **`PRD-PROB-01`** — **Ineficiência e Custo de Integração por Polling**: Atualmente, os sistemas desses clientes precisam consultar repetidamente o endpoint `GET /api/v1/orders` de tempos em tempos para descobrir se houve atualização de status, tornando a integração lenta, ineficiente e custosa para os clientes e gerando carga desnecessária na API do OMS (`[09:00] Marcos`, `[09:02] Marcos`).
+2. **`PRD-PROB-02`** — **Risco Iminente de Churn (Retenção de Receita B2B)**: A **Atlas Comercial** sinalizou que poderá migrar para um concorrente se não receber a funcionalidade até o fim do trimestre. Em outro momento da reunião, solicitou entrega até o fim de novembro (`[09:00] Marcos`, `[09:45] Marcos`).
+3. **`PRD-PROB-03`** — **Necessidade de Confiabilidade sem Intervenção Manual**: Os clientes precisam que as atualizações não fiquem pendentes de atualização manual e sejam entregues mesmo diante de oscilações ou janelas de manutenção planejada em seus servidores (`[09:02] Marcos`, `[09:16] Diego`).
 
 ---
 
@@ -30,11 +30,11 @@ Na semana anterior à reunião técnica, três clientes B2B estratégicos — **
 
 ### Perfis de Usuário / Personas
 
-1. **Integradores e Sistemas B2B dos Clientes (Atlas Comercial, MaxDistribuição, Nova Cargo)**:
+1. **`PRD-USER-01`** — **Integradores e Sistemas B2B dos Clientes (Atlas Comercial, MaxDistribuição, Nova Cargo)**:
    - Consomem os eventos enviados pelo OMS via HTTPS (`POST`), validam a assinatura `HMAC-SHA256` (`X-Signature`), deduplicam eventos usando `X-Event-Id` e, quando necessário, consultam detalhes completos dos itens do pedido em `GET /api/v1/orders/:id` (`[09:20] Sofia`, `[09:25] Diego`, `[09:43] Diego`).
-2. **Usuários Autenticados Representantes do Cliente / Operadores (`OPERATOR` / `ADMIN`)**:
+2. **`PRD-USER-02`** — **Usuários Autenticados Representantes do Cliente / Operadores (`OPERATOR` / `ADMIN`)**:
    - Utilizam a API do OMS (`Authorization: Bearer <jwt>`) para cadastrar, listar, editar e remover endpoints de webhook de um `customerId`, rotacionar `secret` em caso de suspeita de vazamento ou política de segurança e auditar os últimos 100 disparos em `GET /api/v1/webhooks/:id/deliveries` (`[09:21] Sofia`, `[09:31] Marcos`, `[09:32] Marcos`, `[09:34] Marcos`).
-3. **Administradores da Plataforma OMS (`ADMIN`)**:
+3. **`PRD-USER-03`** — **Administradores da Plataforma OMS (`ADMIN`)**:
    - Monitoram falhas permanentes e acionam o reprocessamento manual de eventos na Dead-Letter Queue (`POST /api/v1/admin/webhooks/dead-letter/:id/replay`) após um cliente restabelecer seu servidor (`[09:18] Diego`, `[09:35] Diego`, `[09:36] Sofia`).
 
 ---
@@ -52,13 +52,13 @@ Na semana anterior à reunião técnica, três clientes B2B estratégicos — **
 ## 5. Escopo (Incluso e Fora de Escopo)
 
 ### 5.1 Escopo Incluso (v1)
-- Emissão de **outbound webhooks** para transições de status de pedidos (`OrderStatus`).
-- API REST autenticada para CRUD de endpoints de webhook (`POST`, `GET`, `PATCH`, `DELETE /api/v1/webhooks`) com filtro configurável de status por endpoint.
-- Geração automática de `secret` exclusiva por endpoint e endpoint de rotação com período de graça de 24 horas (`POST /api/v1/webhooks/:id/rotate-secret`).
-- Consulta ao histórico dos últimos 100 disparos por endpoint (`GET /api/v1/webhooks/:id/deliveries`).
-- Worker assíncrono em processo separado com polling a cada 2s, timeout de 10s, 5 retentativas com backoff exponencial e tabela de Dead-Letter Queue (`webhook_dead_letter`).
-- Endpoint administrativo (`POST /api/v1/admin/webhooks/dead-letter/:id/replay`) exclusivo para `ADMIN` com log de auditoria.
-- Documentação no portal do desenvolvedor orientando sobre validação `HMAC-SHA256` e deduplicação por `X-Event-Id` (`[09:26] Marcos`, `[09:40] Marcos`).
+- **`PRD-SCOPE-01`** — Emissão de **outbound webhooks** para transições de status de pedidos (`OrderStatus`).
+- **`PRD-SCOPE-02`** — API REST autenticada para CRUD de endpoints de webhook (`POST`, `GET`, `PATCH`, `DELETE /api/v1/webhooks`) com filtro configurável de status por endpoint.
+- **`PRD-SCOPE-03`** — Geração automática de `secret` exclusiva por endpoint e endpoint de rotação com período de graça de 24 horas (`POST /api/v1/webhooks/:id/rotate-secret`).
+- **`PRD-SCOPE-04`** — Consulta ao histórico dos últimos 100 disparos por endpoint (`GET /api/v1/webhooks/:id/deliveries`).
+- **`PRD-SCOPE-05`** — Worker assíncrono em processo separado com polling a cada 2s, timeout de 10s, 5 retentativas com backoff exponencial e tabela de Dead-Letter Queue (`webhook_dead_letter`).
+- **`PRD-SCOPE-06`** — Endpoint administrativo (`POST /api/v1/admin/webhooks/dead-letter/:id/replay`) exclusivo para `ADMIN` com log de auditoria.
+- **`PRD-SCOPE-07`** — Documentação no portal do desenvolvedor orientando sobre validação `HMAC-SHA256` e deduplicação por `X-Event-Id` (`[09:26] Marcos`, `[09:40] Marcos`).
 
 ### 5.2 Fora de Escopo (Descartados ou Adiados na Reunião)
 
@@ -104,27 +104,27 @@ Os requisitos abaixo têm fundamento na reunião. Rotas detalhadas, códigos e r
 | `PRD-NFR-05` | **Autenticidade Criptográfica e Isolamento de Secret** | Assinatura `HMAC-SHA256` sobre o corpo do request usando `secret` única por endpoint (nunca global da plataforma). | `[09:20] Sofia`, `[09:21] Sofia`, `[09:22] Sofia` |
 | `PRD-NFR-06` | **Garantia de Entrega e Idempotência** | Semântica *at-least-once* com identificador `UUID` único por evento enviado em `X-Event-Id` para deduplicação no cliente receptor. | `[09:24] Diego`, `[09:25] Diego`, `[09:26] Larissa` |
 | `PRD-NFR-07` | **Ordenação de Eventos por Pedido** | Ordenação por pedido em cada endpoint enquanto operar em single-worker. A proposta do FDD usa sequência e bloqueio por predecessor: retry e DLQ impedem ultrapassagem; não há ordenação global nem meta de 10s para sucessores bloqueados. | `[09:12] Diego`, `[09:13] Larissa`, `[09:14] Marcos` |
-| `PRD-NFR-08` | **Isolamento de Processo e Padronização Arquitetural** | O worker deve rodar em processo Node.js separado da API (`src/worker.ts`) com instância própria de `PrismaClient`, reutilizando `AppError` (prefixo `WEBHOOK_`), `errorMiddleware`, `validate` (Zod), `requireRole` e `logger` Pino. | `[09:11] Diego`, `[09:28] Bruno`, `[09:29] Larissa`, `[09:30] Bruno` |
+| `PRD-NFR-08` | **Isolamento de Processo e Padronização Arquitetural** | O worker deve rodar em processo Node.js separado da API (entrypoint dedicado do worker) com instância própria de `PrismaClient`, reutilizando `AppError` (prefixo `WEBHOOK_`), `errorMiddleware`, `validate` (Zod), `requireRole` e `logger` Pino. | `[09:11] Diego`, `[09:28] Bruno`, `[09:29] Larissa`, `[09:30] Bruno` |
 
 ---
 
 ## 8. Decisões e Trade-offs Principais
 
-1. **Outbox Transacional no MySQL vs. Chamada Síncrona ou Redis Streams**: Priorizou-se a consistência ACID com a mudança de status do pedido e zero infraestrutura adicional em vez de introduzir um cluster Redis ou arriscar travar transações com chamadas HTTP síncronas (`[09:04] Bruno`, `[09:06] Diego`, `[09:07] Diego`).
-2. **Polling de 2 Segundos em Single-Worker vs. Triggers ou Multi-Worker Complexo**: Escolheu-se um loop simples de 2s em processo separado que cumpre com folga a meta $< 10\text{s}$ e preserva a ordem por pedido mediante a seleção com predecessor descrita no FDD, sem habilitar multi-worker na v1 (`[09:09] Diego`, `[09:12] Diego`).
-3. **5 Retentativas após o Envio Inicial (~15h) + DLQ Dedicada vs. 3 Tentativas (~30m) ou Retry Infinito**: Equilibrou-se a cobertura de manutenções planejadas reais dos clientes (2h+) com a proteção do banco contra eventos eternamente pendurados (`[09:15] Diego`, `[09:16] Diego`, `[09:17] Diego`).
-4. **At-Least-Once com `X-Event-Id` vs. Exactly-Once**: Adotou-se o padrão de mercado (Stripe, GitHub), mantendo o protocolo leve e documentando para o cliente a responsabilidade de deduplicar por `X-Event-Id` (`[09:25] Diego`, `[09:26] Marcos`).
+1. **`PRD-TRD-01`** — **Outbox Transacional no MySQL vs. Chamada Síncrona ou Redis Streams**: Priorizou-se a consistência ACID com a mudança de status do pedido e zero infraestrutura adicional em vez de introduzir um cluster Redis ou arriscar travar transações com chamadas HTTP síncronas (`[09:04] Bruno`, `[09:06] Diego`, `[09:07] Diego`).
+2. **`PRD-TRD-02`** — **Polling de 2 Segundos em Single-Worker vs. Triggers ou Multi-Worker Complexo**: Escolheu-se um loop simples de 2s em processo separado orientado à meta $< 10\text{s}$ em condições normais e à preservação da ordem por pedido mediante a seleção com predecessor descrita no FDD, sem habilitar multi-worker na v1 (`[09:09] Diego`, `[09:12] Diego`).
+3. **`PRD-TRD-03`** — **5 Retentativas após o Envio Inicial (~15h) + DLQ Dedicada vs. 3 Tentativas (~30m) ou Retry Infinito**: Equilibrou-se a cobertura de manutenções planejadas reais dos clientes (2h+) com a proteção do banco contra eventos eternamente pendurados (`[09:15] Diego`, `[09:16] Diego`, `[09:17] Diego`).
+4. **`PRD-TRD-04`** — **At-Least-Once com `X-Event-Id` vs. Exactly-Once**: Adotou-se o padrão de mercado (Stripe, GitHub), mantendo o protocolo leve e documentando para o cliente a responsabilidade de deduplicar por `X-Event-Id` (`[09:25] Diego`, `[09:26] Marcos`).
 
 ---
 
 ## 9. Dependências
 
-- **Código e Infraestrutura Existentes do OMS**:
+- **`PRD-DEP-01`** — **Código e Infraestrutura Existentes do OMS**:
   - Banco de dados MySQL e schema Prisma (`prisma/schema.prisma`, `src/config/database.ts`).
   - Serviço e máquina de estados de pedidos (`src/modules/orders/order.service.ts`, `src/modules/orders/order.status.ts`).
   - Middlewares de autenticação/RBAC (`src/middlewares/auth.middleware.ts`), validação Zod (`src/middlewares/validate.middleware.ts`), tratamento de erros (`src/middlewares/error.middleware.ts`) e logger Pino (`src/shared/logger/index.ts`).
-- **Revisão de Segurança (Sofia)**: Alocação obrigatória de **2 dias úteis** na sprint 3 antes do deploy para revisão da implementação de `HMAC-SHA256` e geração/rotação de `secret` (`[09:46] Sofia`).
-- **Documentação Externa no Portal do Desenvolvedor (Marcos)**: Publicação do guia de integração explicando os endpoints de API, validação de `X-Signature` e deduplicação por `X-Event-Id` (`[09:26] Marcos`, `[09:40] Marcos`).
+- **`PRD-DEP-02`** — **Revisão de Segurança (Sofia)**: Alocação obrigatória de **2 dias úteis** na sprint 3 antes do deploy para revisão da implementação de `HMAC-SHA256` e geração/rotação de `secret` (`[09:46] Sofia`).
+- **`PRD-DEP-03`** — **Documentação Externa no Portal do Desenvolvedor (Marcos)**: Publicação do guia de integração explicando os endpoints de API, validação de `X-Signature` e deduplicação por `X-Event-Id` (`[09:26] Marcos`, `[09:40] Marcos`).
 
 ---
 
@@ -146,7 +146,7 @@ As probabilidades abaixo são estimativas qualitativas propostas na elaboração
 
 1. **`PRD-CA-01`** — Um usuário autenticado consegue cadastrar (`POST /api/v1/webhooks`), listar (`GET`), editar (`PATCH`) e excluir (`DELETE`) webhooks para um `customerId`, recebendo a `secret` gerada na criação e erro `400` caso informe uma URL sem `https://`.
 2. **`PRD-CA-02`** — Quando um pedido muda de status em `PATCH /api/v1/orders/:id/status`, o evento é gravado atomicamente na `webhook_outbox` com snapshot JSON ($\le 64\text{KB}$, sem `items`) apenas para os webhooks ativos daquele cliente que assinam o novo status.
-3. **`PRD-CA-03`** — O worker em processo separado (`src/worker.ts`) tem como meta confirmar a primeira entrega em menos de 10 segundos em condições normais; a validação mede fila + rede, além do polling de 2s, e identifica atrasos por retry, DLQ ou saturação. Os envios contêm os headers `X-Event-Id`, `X-Signature` (`HMAC-SHA256`), `X-Timestamp`, `X-Webhook-Id` e `Content-Type: application/json`.
+3. **`PRD-CA-03`** — O worker em processo separado (entrypoint dedicado do worker) tem como meta confirmar a primeira entrega em menos de 10 segundos em condições normais; a validação mede fila + rede, além do polling de 2s, e identifica atrasos por retry, DLQ ou saturação. Os envios contêm os headers `X-Event-Id`, `X-Signature` (`HMAC-SHA256`), `X-Timestamp`, `X-Webhook-Id` e `Content-Type: application/json`.
 4. **`PRD-CA-04`** — Ao rotacionar a secret (`POST /api/v1/webhooks/:id/rotate-secret`), a chave antiga continua válida em paralelo por 24 horas.
 5. **`PRD-CA-05`** — O cliente consegue consultar os últimos 100 disparos em `GET /api/v1/webhooks/:id/deliveries` com status de sucesso/falha, payload, response e tempo de resposta.
 6. **`PRD-CA-06`** — Falhas de entrega (timeout $> 10\text{s}$ ou HTTP não-2xx) são retentadas 5 vezes (`1m, 5m, 30m, 2h, 12h`) e, após falhar a última retentativa (6ª chamada), movidas para `webhook_dead_letter`.
@@ -158,14 +158,14 @@ As probabilidades abaixo são estimativas qualitativas propostas na elaboração
 
 Planejamento de validação distribuído ao longo das 3 sprints (`[09:46] Larissa`, `[09:46] Sofia`):
 
-1. **Testes Unitários (Vitest)**:
+1. **`PRD-TEST-01`** — **Testes Unitários (Vitest)**:
    - Geração de `secret`, cálculo de assinatura `HMAC-SHA256` e lógica de vigência do *grace period* de 24h.
    - Validação de schemas Zod (rejeição de `http://`, validação de `OrderStatus[]`, limite de 64KB).
    - Validação de múltiplos digests, expiração da chave antiga e recusa de rotações sobrepostas.
    - Cálculo dos intervalos de backoff exponencial (`1m, 5m, 30m, 2h, 12h`).
-2. **Testes de Integração e Ponta a Ponta (Vitest + Supertest + MySQL)**:
+2. **`PRD-TEST-02`** — **Testes de Integração e Ponta a Ponta (Vitest + Supertest + MySQL)**:
    - Verificação da atomicidade transacional em `OrderService.changeStatus` (garantindo que falha na outbox reverte a mudança de status e vice-versa, e que status não assinados não geram linhas na outbox).
    - Testes de contrato das 7 rotas HTTP (`/api/v1/webhooks/*` e `/api/v1/admin/webhooks/dead-letter/:id/replay`), validando bloqueio `403 FORBIDDEN` para `OPERATOR` no endpoint de replay e emissão do log de auditoria.
    - Simulação do ciclo do worker com servidor receptor mockado (sucesso `200`, timeout $> 10\text{s}$, falha inicial e cinco retries, recuperação de crash, ordenação sob retry/DLQ, replay concorrente, novo esgotamento após replay e transição para `webhook_dead_letter`).
-3. **Revisão Dedicada de Segurança (Gate Pré-Deploy)**:
+3. **`PRD-TEST-03`** — **Revisão Dedicada de Segurança (Gate Pré-Deploy)**:
    - Reserva obrigatória de **2 dias úteis** ao final da sprint 3 para auditoria de código pela engenheira de segurança (**Sofia**), inspecionando a implementação de `HMAC-SHA256`, entropia e rotação de `secret` e *redaction* de logs antes da liberação em produção (`[09:46] Sofia`, `[09:47] Larissa`, `[09:49] Sofia`).

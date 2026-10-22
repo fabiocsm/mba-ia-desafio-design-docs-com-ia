@@ -43,7 +43,7 @@ flowchart LR
 4. **RFC (`docs/RFC.md`)**: Consolidação da proposta técnica em nível arquitetural conciso (2–4 páginas), reunindo as 6 alternativas descartadas na reunião com seus trade-offs, as 5 questões deixadas em aberto e links diretos para os 6 ADRs.
 5. **FDD (`docs/FDD.md`)**: Especificação profunda de construção contendo modelagem de dados Prisma, diagramas de sequência (outbox, worker 2s, retry `1m/5m/30m/2h/12h` e DLQ), 7 contratos de endpoints REST + contrato do POST outbound, matriz de 11 erros `WEBHOOK_*`, resiliência, observabilidade (métricas, logs Pino e tracing via `X-Event-Id`) e a seção obrigatória **"Integração com o sistema existente"** detalhando 12 arquivos reais do repositório.
 6. **PRD (`docs/PRD.md`)**: Consolidação da visão de produto e negócio (dor de polling em `GET /api/v1/orders` dos clientes Atlas Comercial, MaxDistribuição e Nova Cargo, risco de churn até o fim do trimestre, 3 metas quantitativas, 5 exclusões explícitas de escopo, 12 requisitos funcionais, 8 não funcionais e 5 riscos com probabilidade, impacto e mitigação).
-7. **Tracker (`docs/TRACKER.md`)**: Construção de um inventário com **161 IDs explícitos**, sendo 134 linhas `TRANSCRICAO` (83,2%) e 27 `CODIGO`. A auditoria automatizada cobre os IDs e a existência das origens; a revisão semântica distingue decisões da reunião de detalhes propostos e está registrada em `specs/001-webhook-design-docs/review.md`.
+7. **Tracker (`docs/TRACKER.md`)**: Construção de um inventário com **266 unidades identificáveis**, sendo 224 linhas `TRANSCRICAO` (84,2%) e 42 `CODIGO`. A auditoria automatizada cobre os IDs e a existência das origens; a revisão semântica distingue decisões da reunião de detalhes propostos e está registrada em `specs/001-webhook-design-docs/review.md`.
 8. **README do Processo e Revisão Final**: Documentação transparente da jornada com IA e validação executável de todos os critérios de aceite.
 
 ---
@@ -73,7 +73,7 @@ Proibido inventar qualquer informação sem origem verificável em `[hh:mm] Nome
 Com base nos 6 ADRs (`docs/adrs/ADR-001` a `ADR-006`) e no `docs/RFC.md`, elabore o Feature Design Document em `docs/FDD.md`.
 Respeite a altura de Implementação ("Como construir, em detalhe?"):
 - Especifique os 4 modelos Prisma propostos (`WebhookEndpoint`, `WebhookOutbox`, `WebhookDelivery`, `WebhookDeadLetter`) usando `String @id @default(uuid()) @db.Char(36)` conforme `prisma/schema.prisma` e `[09:51] Larissa`.
-- Detalhe os 4 fluxos operacionais: (1) criação atômica via função pura `publishWebhookEvent(tx, order, fromStatus, toStatus)` com filtro de status na inserção e validação de teto de 64KB; (2) polling a cada 2s em `src/worker.ts`; (3) curva de retry exponencial (5 retentativas após o envio inicial: 1m, 5m, 30m, 2h, 12h) com timeout HTTP de 10s; (4) movimentação para `webhook_dead_letter` e replay manual por `ADMIN`.
+- Detalhe os 4 fluxos operacionais: (1) criação atômica via função pura `publishWebhookEvent(tx, order, fromStatus, toStatus)` com filtro de status na inserção e validação de teto de 64KB; (2) polling a cada 2s em entrypoint dedicado do worker; (3) curva de retry exponencial (5 retentativas após o envio inicial: 1m, 5m, 30m, 2h, 12h) com timeout HTTP de 10s; (4) movimentação para `webhook_dead_letter` e replay manual por `ADMIN`.
 - Documente todos os contratos públicos HTTP (`/api/v1/webhooks` CRUD, `rotate-secret`, `deliveries`, `/api/v1/admin/webhooks/dead-letter/:id/replay` e o contrato do POST outbound com headers `X-Event-Id`, `X-Signature`, `X-Timestamp`, `X-Webhook-Id` e payload sem `items`).
 - Construa a Matriz de Erros Previstos usando exclusivamente códigos com prefixo `WEBHOOK_*` mapeados às classes de `src/shared/errors/http-errors.ts`.
 - Na seção obrigatória "Integração com o sistema existente", referencie apenas caminhos de arquivos reais existentes no repositório e mostre o snippet de integração em `src/modules/orders/order.service.ts`.
@@ -105,7 +105,7 @@ A produção inicial registrou **4 iterações principais**; a revisão do PR ac
    - *Problema identificado*: O rascunho inicial da proposta técnica no RFC tendia a antecipar schemas completos de tabelas e exemplos extensos de payloads JSON de request/response, duplicando o conteúdo do FDD.
    - *Correção aplicada*: Enxugamos o `docs/RFC.md` para operar estritamente na altura de **Arquitetura** (visão sistêmica em diagrama Mermaid, resumo dos 6 pilares, tabela de 6 alternativas descartadas com trade-offs, 5 questões em aberto e links para os 6 ADRs), delegando toda a especificação de colunas Prisma, contratos JSON e códigos `WEBHOOK_*` exclusivamente para o `docs/FDD.md`.
 3. **Iteração 3 — Distinção Rigorosa entre Arquivos Existentes e Arquivos Propostos na Validação de Caminhos**:
-   - *Problema identificado*: Na reunião, Larissa e Bruno mencionam a criação futura de `src/worker.ts` (`[09:11] Larissa`) e da pasta `src/modules/webhooks/` (`[09:27] Bruno`), que naturalmente ainda não existem no repositório (já que o código é imutável neste desafio). Se listados como arquivos existentes na tabela de rastreabilidade `Fonte = CODIGO`, quebrariam a regra de que 100% dos arquivos referenciados como código existente devem existir no repositório.
+   - *Problema identificado*: Na reunião, Larissa e Bruno mencionam a criação de um entrypoint dedicado do worker (`[09:11] Larissa`) e do módulo de webhooks (`[09:27] Bruno`), que naturalmente ainda não existem no repositório (já que o código é imutável neste desafio). Se listados como arquivos existentes na tabela de rastreabilidade `Fonte = CODIGO`, quebrariam a regra de que 100% dos arquivos referenciados como código existente devem existir no repositório.
    - *Correção aplicada*: Padronizamos todas as 12 referências `Fonte = CODIGO` no `docs/TRACKER.md` e na seção 10 do `docs/FDD.md` para apontarem exclusivamente para os arquivos reais existentes (`prisma/schema.prisma`, `src/modules/orders/order.service.ts`, `src/modules/orders/order.status.ts`, `src/shared/errors/app-error.ts`, `src/shared/errors/http-errors.ts`, `src/middlewares/error.middleware.ts`, `src/middlewares/auth.middleware.ts`, `src/middlewares/validate.middleware.ts`, `src/shared/logger/index.ts`, `src/shared/http/response.ts`, `src/routes/index.ts`, `src/app.ts`, `src/server.ts`, `src/config/database.ts`), validando-os via script automatizado.
 4. **Iteração 4 — Auditoria Automatizada de Timestamps no `docs/TRACKER.md`**:
    - *Problema identificado*: Em tabelas extensas de rastreabilidade (124 linhas), referências combinadas (como `[09:21] / [09:22] Sofia`) dificultam a verificação mecânica contra `TRANSCRICAO.md`.
@@ -116,6 +116,12 @@ A produção inicial registrou **4 iterações principais**; a revisão do PR ac
    - Alinhamos os contratos aos construtores reais de erro e à origem do enum OrderStatus; fixamos um único formato de assinatura e a proteção das 24h em rotações sucessivas.
    - A segunda revisão também corrigiu desempate de eventos com timestamps iguais, métrica de latência total versus duração HTTP e afirmações indevidas de garantia universal de entrega/retrocompatibilidade.
    - Os detalhes derivados estão identificados como propostas, com fundamento e justificativa no FDD e encaminhamento de revisão no RFC. A auditoria de imutabilidade compara a entrega com o commit base, incluindo mudanças já commitadas. Resultados e limites estão no [relatório de revisão](./specs/001-webhook-design-docs/review.md).
+
+6. **Auditoria dos 31 Critérios de Aceite**:
+   - A validação anterior cobria os IDs já existentes. Levantamos também as unidades sem ID: problemas, personas, escopo, dependências, testes e itens de contexto/decisão/consequência dos ADRs. O inventário atual contém 266 unidades, todas rastreadas; 224 fontes de transcrição (84,2%) e 42 de código.
+   - Passamos a descrever componentes futuros por nomes lógicos, removendo referências a arquivos que ainda não existem. A auditoria de caminhos não admite exceções.
+   - Tornamos explícitos os requests JSON vazios de rotação e replay, completando quatro contratos HTTP com pares de exemplos de entrada/saída e códigos de status.
+   - O resultado de cada critério, sua evidência e o denominador da cobertura estão na [matriz de aceite](./specs/001-webhook-design-docs/checklists/acceptance.md).
 
 ---
 
@@ -139,7 +145,7 @@ A produção inicial registrou **4 iterações principais**; a revisão do PR ac
 │   ├── RFC.md                                                       # [Altura: Arquitetura] Proposta técnica, alternativas e pendências
 │   ├── FDD.md                                                       # [Altura: Implementação] Fluxos, contratos HTTP, erros e código
 │   ├── PRD.md                                                       # [Altura: Produto/Negócio] Problema, escopo, requisitos e métricas
-│   └── TRACKER.md                                                   # [Altura: Transversal] Matriz de rastreabilidade (161 IDs explícitos)
+│   └── TRACKER.md                                                   # [Altura: Transversal] Matriz de rastreabilidade (266 unidades identificáveis)
 └── specs/001-webhook-design-docs/                                   # Artefatos de planejamento e auditoria (Spec Kit)
     ├── enunciado-original.md                                        # Cópia preservada do enunciado original do desafio
     ├── spec.md                                                      # Especificação dos entregáveis
@@ -150,6 +156,8 @@ A produção inicial registrou **4 iterações principais**; a revisão do PR ac
     ├── quickstart.md                                                # Scripts executáveis de auditoria dos critérios de aceite
     └── tasks.md                                                     # Lista de tarefas executadas
 ```
+
+A comprovação dos **31 critérios de aceite** está na [matriz de aceite](./specs/001-webhook-design-docs/checklists/acceptance.md).
 
 ### Ordem Sugerida de Leitura
 

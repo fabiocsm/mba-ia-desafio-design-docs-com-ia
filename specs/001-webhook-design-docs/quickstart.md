@@ -69,6 +69,7 @@ require(source_counts['CODIGO'] >= 5, 'menos de cinco linhas CODIGO')
 transcript = Path('TRANSCRICAO.md').read_text()
 for id, doc, kind, summary, source, location in rows:
     require(Path(doc).is_file(), id + ': documento ausente')
+    require(id in Path(doc).read_text(), id + ': ID ausente no documento indicado')
     if source == 'TRANSCRICAO':
         refs = re.findall(r'\[\d{2}:\d{2}\] [A-Za-zÀ-ÿ]+', location)
         require(bool(refs), id + ': marcador ausente')
@@ -77,28 +78,29 @@ for id, doc, kind, summary, source, location in rows:
     else:
         require(Path(location).is_file(), id + ': código inexistente: ' + location)
 
-pattern = r'\b(?:PRD|RFC|FDD)-[A-Z]+-\d{2}\b|\bADR-\d{3}(?:-(?:ALT|TRD)-\d{2})?\b'
+pattern = r'\b(?:PRD|RFC|FDD)-[A-Z]+-\d{2}\b|\bADR-\d{3}(?:-[A-Z]+-\d{2})?\b'
 docs = [Path('docs/PRD.md'), Path('docs/RFC.md'), Path('docs/FDD.md'), *adrs]
 inventory = set()
 for p in docs:
     inventory.update(re.findall(pattern, p.read_text()))
 require(not inventory - set(ids), 'IDs sem origem no Tracker: ' + str(sorted(inventory - set(ids))))
 require(not set(ids) - inventory, 'IDs do Tracker ausentes dos documentos')
-for p in docs + [Path('docs/TRACKER.md'), Path('README.md')]:
+audited_docs = sorted({Path('README.md'), *Path('docs').rglob('*.md'),
+                       *Path('specs/001-webhook-design-docs').rglob('*.md')})
+for p in audited_docs:
     for target in re.findall(r'\[[^\]]*\]\(([^)]+)\)', p.read_text()):
         if not re.match(r'\w+://', target):
             require((p.parent / target.split('#')[0]).exists(), str(p) + ': link ausente: ' + target)
     for path in re.findall(r'(?:src|prisma)/[A-Za-z0-9_./-]+\.(?:ts|prisma)', p.read_text()):
-        proposed = path == 'src/worker.ts' or path.startswith('src/modules/webhooks/')
-        require(proposed or Path(path).is_file(), str(p) + ': código ausente: ' + path)
+        require(Path(path).is_file(), str(p) + ': código ausente: ' + path)
 print('PASSOU: imutabilidade, enunciado, estrutura, links e referências formais.')
-print(f'Cobertura de IDs explícitos: {len(inventory)}/{len(inventory)}; '
+print(f'Cobertura do inventário de unidades: {len(inventory)}/{len(inventory)}; '
       f'TRANSCRICAO: {source_counts["TRANSCRICAO"]}/{len(rows)}; CODIGO: {source_counts["CODIGO"]}.')
 print('A revisão semântica abaixo continua obrigatória; existência de origem não prova conteúdo.')
 PY
 ```
 
-Arquivos propostos (`src/worker.ts` e `src/modules/webhooks/*`) não são apresentados como código existente nem usados como Fonte CODIGO. A validação acima distingue essas propostas da base real.
+Componentes futuros são descritos por nomes lógicos, sem caminhos de arquivo inexistentes. Todo caminho concreto de código mencionado nos documentos deve existir no repositório; não há lista de exceções.
 
 ## 3. Revisão Semântica e Simulação dos Fluxos
 
@@ -115,3 +117,7 @@ Na revisão operacional, simule:
 7. Métricas: duração HTTP não substitui espera em fila + latência de notificação; primeira entrega, retry e replay são medidos separadamente.
 
 A simulação do desenho não comprova comportamento de uma feature ainda não implementada. O [relatório de revisão](./review.md) registra o que foi efetivamente verificado nesta correção.
+
+## 4. Evidência de Todos os Critérios
+
+A [matriz de aceite](./checklists/acceptance.md) contém os 31 critérios obrigatórios com resultado e evidência. O inventário atual tem 266 unidades, 224 fontes TRANSCRICAO e 42 CODIGO. A verificação de cobertura exige comparar esse inventário levantado por categorias com o Tracker, e não presumir que cada linha já existente define o denominador.

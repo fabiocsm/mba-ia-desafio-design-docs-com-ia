@@ -12,11 +12,11 @@ Este contrato define a interface documental exata que os 6 grupos de artefatos d
 - **Quantidade**: 6 arquivos (dentro da faixa obrigatória de 5 a 8 arquivos).
 - **Lista de Arquivos Planejados**:
   1. `docs/adrs/ADR-001-outbox-no-mysql.md` — Padrão Transactional Outbox no MySQL com snapshot JSON na inserção e ID UUID.
-  2. `docs/adrs/ADR-002-worker-separado-em-polling.md` — Worker em processo Node.js separado (`src/worker.ts`) com polling a cada 2 segundos e ordenação por pedido com as condições de predecessor do FDD.
+  2. `docs/adrs/ADR-002-worker-separado-em-polling.md` — Worker em processo Node.js separado (entrypoint dedicado do worker) com polling a cada 2 segundos e ordenação por pedido com as condições de predecessor do FDD.
   3. `docs/adrs/ADR-003-politica-de-retry-backoff-e-dlq.md` — Política de retry com backoff exponencial (5 retentativas após o envio inicial: 1m, 5m, 30m, 2h, 12h), tabela `webhook_dead_letter` separada e replay manual por `ADMIN`.
   4. `docs/adrs/ADR-004-autenticacao-hmac-sha256-e-rotacao-de-secret.md` — Assinatura HMAC-SHA256 sobre o payload com secret única por endpoint, rotação com grace period de 24h e exigência de HTTPS.
   5. `docs/adrs/ADR-005-entrega-at-least-once-com-x-event-id.md` — Semântica de entrega *at-least-once* com deduplicação no cliente via cabeçalho `X-Event-Id` (UUID).
-  6. `docs/adrs/ADR-006-reuso-dos-padroes-existentes-do-oms.md` — Reuso integral da arquitetura modular (`src/modules/webhooks/`), função pura `publishWebhookEvent(tx, ...)` em `src/modules/orders/order.service.ts`, `AppError` (`WEBHOOK_*`), `errorMiddleware`, `requireRole` e logger `Pino`.
+  6. `docs/adrs/ADR-006-reuso-dos-padroes-existentes-do-oms.md` — Reuso integral da arquitetura modular (módulo de webhooks), função pura `publishWebhookEvent(tx, ...)` em `src/modules/orders/order.service.ts`, `AppError` (`WEBHOOK_*`), `errorMiddleware`, `requireRole` e logger `Pino`.
 - **Seções Obrigatórias em Cada ADR**:
   1. `## Status`
   2. `## Contexto`

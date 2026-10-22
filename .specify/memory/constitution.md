@@ -69,8 +69,8 @@ preserva a memória técnica sobre o que foi deliberadamente rejeitado ou poster
   detalhando a integração com pelo menos 4 caminhos de arquivo reais do código base.
 - Pelo menos 1 ADR MUST referenciar explicitamente arquivos, módulos ou classes reais do código
   existente.
-- 100% dos caminhos apresentados como código existente MUST existir no repositório. Arquivos
-  futuros MUST ser identificados como propostas e MUST NOT ser usados como Fonte CODIGO.
+- 100% dos caminhos de código mencionados MUST existir no repositório. Componentes futuros
+  MUST ser descritos por nomes lógicos, sem caminhos inexistentes nem exceções ao aceite.
 - Detalhes de implementação derivados MUST indicar fundamento e justificativa; MUST NOT ser
   atribuídos aos participantes como decisões adicionais aprovadas sem evidência na reunião.
 
@@ -169,6 +169,8 @@ critérios obrigatórios abaixo:
   cada item da seção de Critérios de Aceite e a existência real de todos os arquivos de código
   mencionados MUST ser auditados e validados.
 
-**Version**: 1.0.1 | **Ratified**: 2026-10-21 | **Last Amended**: 2026-10-21
+**Version**: 1.0.2 | **Ratified**: 2026-10-21 | **Last Amended**: 2026-10-21
 
 **Emenda 1.0.1 — Clarificação de rastreabilidade**: distingue arquivos existentes de propostas futuras e detalhes derivados de decisões da reunião. Não relaxa a imutabilidade nem altera os limiares do desafio. Impacto sincronizado em spec.md, FDD, RFC, Tracker e quickstart.md.
+
+**Emenda 1.0.2 — Aceite estrito de caminhos**: referências concretas de código devem existir, inclusive na documentação de propostas. Componentes futuros são nomeados logicamente; a auditoria não exclui caminhos por prefixo. Sincronizado com spec.md, quickstart.md e os entregáveis.
